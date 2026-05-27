@@ -1,50 +1,88 @@
-# Welcome to your Expo app 👋
+# Unitree Robot Controller (Expo + React Native)
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Aplicación móvil en **JavaScript** para controlar robots Unitree (**Go2** o **G1**) mediante una API REST. Incluye autenticación, conexión al robot, movimiento, acciones predefinidas e historial de comandos.
 
-## Get started
+## Requisitos
 
-1. Install dependencies
+- Node.js 20+ (recomendado para Expo SDK 54)
+- npm
+- Expo Go o emulador iOS/Android
 
-   ```bash
-   npm install
-   ```
+## Variables de entorno
 
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+Copiá `.env.example` a `.env` y configurá la URL base del backend:
 
 ```bash
-npm run reset-project
+EXPO_PUBLIC_API_BASE_URL=http://TU_IP:8000
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Expo expone variables con prefijo `EXPO_PUBLIC_` al bundle de la app. Reiniciá `expo start` después de cambiar `.env`.
 
-## Learn more
+## Cómo ejecutar
 
-To learn more about developing your project with Expo, look at the following resources:
+```bash
+npm install
+npx expo start
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+Luego abrí el proyecto en Expo Go, emulador o dispositivo físico.
 
-## Join the community
+## Estructura del proyecto
 
-Join our community of developers creating universal apps.
+```
+src/
+  api/              # Cliente Axios y endpoints (auth, robot, actions, history)
+  components/       # UI reutilizable (joystick, selector, badge, etc.)
+  context/          # AuthContext y RobotContext (estado global)
+  navigation/       # AppNavigator, AuthStack, MainTabs
+  screens/          # Pantallas por flujo (login, conexión, movimiento…)
+  constants/        # BASE_URL, endpoints y theme (colores Go2/G1)
+  utils/            # Helpers de AsyncStorage
+App.js              # Providers y navegación raíz
+index.js            # Entry point (registerRootComponent)
+```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+### Flujo de navegación
+
+1. **Carga inicial**: `AuthContext` restaura token desde AsyncStorage → pantalla de loading.
+2. **Sin sesión**: `AuthStack` (Login → Register).
+3. **Con sesión**: `MainTabs` con cuatro pestañas:
+   - **Conexión**: selector Go2/G1, interfaz de red, conectar/desconectar, JSON de estado.
+   - **Movimiento**: D-pad, stop/stand/sit, joystick (placeholder); deshabilitado si no hay conexión.
+   - **Acciones**: listado y ejecución de acciones del backend.
+   - **Historial**: comandos enviados.
+
+### API HTTP
+
+Todas las peticiones pasan por `src/api/client.js`:
+
+- `baseURL` desde `EXPO_PUBLIC_API_BASE_URL` / `constants/api.js`
+- Interceptor de request: header `Authorization: Bearer <token>`
+- Interceptor de response `401`: limpia sesión y redirige a Login
+
+## Stack técnico
+
+| Herramienta | Uso |
+|-------------|-----|
+| Expo SDK 54 | Runtime y tooling |
+| React Navigation 7 | Native Stack (auth) + Bottom Tabs (main) |
+| Axios | Cliente HTTP |
+| AsyncStorage | Persistencia de token/usuario |
+| Reanimated | Preparado para joystick (placeholder) |
+| Expo Vector Icons | Iconografía |
+
+## Próximos pasos (TODOs en código)
+
+- Conectar pantallas al contrato real del backend REST
+- Implementar `VirtualJoystick` con Reanimated + Gesture Handler
+- Ajustar formas de respuesta (`token`, `user`, listados paginados)
+- Polling de estado del robot en `ConnectionScreen`
+
+## Scripts
+
+| Comando | Descripción |
+|---------|-------------|
+| `npm start` | Inicia Metro (`expo start`) |
+| `npm run android` | Abre en Android |
+| `npm run ios` | Abre en iOS |
+| `npm run lint` | ESLint |
