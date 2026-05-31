@@ -3,21 +3,21 @@ export const BASE_URL =
 
 export const ENDPOINTS = {
   auth: {
-    login: '/auth/login',
+    login: '/auth/token',
     register: '/auth/register',
   },
   robot: {
-    connect: '/robot/connect',
-    disconnect: '/robot/disconnect',
-    move: '/robot/move',
-    stop: '/robot/stop',
-    standup: '/robot/standup',
-    sitdown: '/robot/sitdown',
-    status: '/robot/status',
+    connect: '/connect',
+    disconnect: '/disconnect',
+    move: '/move',
+    stop: '/stop',
+    standup: '/standup',
+    sitdown: '/sitdown',
+    status: '/status',
   },
   actions: {
     list: '/actions',
-    execute: (id) => `/actions/${id}`,
+    execute: (name) => `/action/${name}`,
   },
   history: {
     list: '/history',

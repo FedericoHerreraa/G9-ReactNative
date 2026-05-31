@@ -48,10 +48,10 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = useCallback(
-    async (email, password) => {
-      const data = await authApi.login(email, password);
+    async (identifier, password) => {
+      const data = await authApi.login(identifier, password);
       const nextToken = data.token ?? data.access_token;
-      const nextUser = data.user ?? { email, id: data.user_id };
+      const nextUser = data.user ?? { identifier, id: data.user_id };
       await applySession(nextToken, nextUser);
       return data;
     },

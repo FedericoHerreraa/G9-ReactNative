@@ -34,6 +34,10 @@ client.interceptors.response.use(
       onUnauthorized?.();
       navigateToLogin();
     }
+    // Sin respuesta del servidor = sin conexión o servidor caído
+    if (!error.response) {
+      error.message = 'Sin conexión. Verificá tu red o que el servidor esté disponible.';
+    }
     return Promise.reject(error);
   }
 );

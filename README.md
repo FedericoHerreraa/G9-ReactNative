@@ -1,88 +1,93 @@
-# Unitree Robot Controller (Expo + React Native)
+# Unitree Robot Controller
 
-Aplicación móvil en **JavaScript** para controlar robots Unitree (**Go2** o **G1**) mediante una API REST. Incluye autenticación, conexión al robot, movimiento, acciones predefinidas e historial de comandos.
+Aplicación móvil en **React Native + Expo** para controlar robots Unitree (**Go2** o **G1**) mediante una API REST.
 
 ## Requisitos
 
-- Node.js 20+ (recomendado para Expo SDK 54)
+- Node.js 20+
 - npm
-- Expo Go o emulador iOS/Android
+- Expo Go (celular) o navegador web
 
-## Variables de entorno
+## Configuración
 
-Copiá `.env.example` a `.env` y configurá la URL base del backend:
+Copiá `.env.example` a `.env` y configurá la IP del servidor:
 
 ```bash
-EXPO_PUBLIC_API_BASE_URL=http://TU_IP:8000
+cp .env.example .env
+# Editá EXPO_PUBLIC_API_BASE_URL con la IP del laboratorio
+# Ejemplo: EXPO_PUBLIC_API_BASE_URL=http://192.168.1.100:8000
 ```
 
-Expo expone variables con prefijo `EXPO_PUBLIC_` al bundle de la app. Reiniciá `expo start` después de cambiar `.env`.
-
-## Cómo ejecutar
+## Cómo correr
 
 ```bash
 npm install
-npx expo start
+npm start          # abre el QR para Expo Go
+npm run web        # abre en el navegador
+npm run android    # abre en emulador Android
 ```
 
-Luego abrí el proyecto en Expo Go, emulador o dispositivo físico.
+## Pantallas
 
-## Estructura del proyecto
+| Pantalla | Descripción |
+|----------|-------------|
+| Login | Email o usuario + contraseña. Sesión persistente. |
+| Registro | Nombre de usuario, email, contraseña con confirmación. |
+| Conexión | Selector Go2/G1, interfaz de red, conectar/desconectar, estado JSON. |
+| Movimiento | D-pad direccional, stop/levantarse/sentarse, joystick (placeholder). |
+| Acciones | Lista de acciones del robot, ejecución con feedback visual. |
+| Historial | Comandos enviados con resultado y timestamp, se refresca al entrar. |
+
+## Estructura
 
 ```
 src/
-  api/              # Cliente Axios y endpoints (auth, robot, actions, history)
-  components/       # UI reutilizable (joystick, selector, badge, etc.)
-  context/          # AuthContext y RobotContext (estado global)
-  navigation/       # AppNavigator, AuthStack, MainTabs
-  screens/          # Pantallas por flujo (login, conexión, movimiento…)
-  constants/        # BASE_URL, endpoints y theme (colores Go2/G1)
-  utils/            # Helpers de AsyncStorage
-App.js              # Providers y navegación raíz
-index.js            # Entry point (registerRootComponent)
+  api/          # Cliente Axios + endpoints (auth, robot, actions, history)
+  components/   # UI reutilizable (joystick, selector, badge, historial)
+  constants/    # Endpoints, colores y tema (Go2 naranja / G1 azul)
+  context/      # AuthContext (sesión) y RobotContext (estado del robot)
+  hooks/        # useCommandLog — logging unificado de comandos
+  navigation/   # AppNavigator, AuthStack, MainTabs
+  screens/      # Una pantalla por flujo
+  utils/        # AsyncStorage helpers
 ```
 
-### Flujo de navegación
+## Logging de comandos
 
-1. **Carga inicial**: `AuthContext` restaura token desde AsyncStorage → pantalla de loading.
-2. **Sin sesión**: `AuthStack` (Login → Register).
-3. **Con sesión**: `MainTabs` con cuatro pestañas:
-   - **Conexión**: selector Go2/G1, interfaz de red, conectar/desconectar, JSON de estado.
-   - **Movimiento**: D-pad, stop/stand/sit, joystick (placeholder); deshabilitado si no hay conexión.
-   - **Acciones**: listado y ejecución de acciones del backend.
-   - **Historial**: comandos enviados.
+Cada vez que se envía un comando al robot (movimiento, acción, stop, levantarse, sentarse), se registra automáticamente en el servidor vía `useCommandLog`:
 
-### API HTTP
+```js
+const { logCommand } = useCommandLog();
+await logCommand({ action: 'Adelante', success: true });
+```
 
-Todas las peticiones pasan por `src/api/client.js`:
+El historial es personal: el token del usuario se envía en cada request y el servidor filtra por cuenta.
 
-- `baseURL` desde `EXPO_PUBLIC_API_BASE_URL` / `constants/api.js`
-- Interceptor de request: header `Authorization: Bearer <token>`
-- Interceptor de response `401`: limpia sesión y redirige a Login
+## Backend
 
-## Stack técnico
+La app consume la API REST del repositorio `Horix89/unitree_robot_api`. Endpoints principales:
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| POST | `/auth/token` | Login |
+| POST | `/auth/register` | Registro |
+| GET | `/status` | Estado del robot |
+| POST | `/connect` | Conectar robot |
+| POST | `/disconnect` | Desconectar robot |
+| POST | `/move` | Mover `{ vx, vy, vyaw }` |
+| POST | `/stop` | Detener |
+| POST | `/standup` | Levantarse |
+| POST | `/sitdown` | Sentarse |
+| GET | `/actions` | Lista de acciones disponibles |
+| POST | `/action/{nombre}` | Ejecutar acción |
+
+## Stack
 
 | Herramienta | Uso |
 |-------------|-----|
 | Expo SDK 54 | Runtime y tooling |
-| React Navigation 7 | Native Stack (auth) + Bottom Tabs (main) |
-| Axios | Cliente HTTP |
-| AsyncStorage | Persistencia de token/usuario |
-| Reanimated | Preparado para joystick (placeholder) |
+| React Navigation 7 | Stack (auth) + Bottom Tabs (main) |
+| Axios | Cliente HTTP con interceptores (token, 401, errores de red) |
+| AsyncStorage | Persistencia de sesión |
+| Reanimated | Preparado para joystick |
 | Expo Vector Icons | Iconografía |
-
-## Próximos pasos (TODOs en código)
-
-- Conectar pantallas al contrato real del backend REST
-- Implementar `VirtualJoystick` con Reanimated + Gesture Handler
-- Ajustar formas de respuesta (`token`, `user`, listados paginados)
-- Polling de estado del robot en `ConnectionScreen`
-
-## Scripts
-
-| Comando | Descripción |
-|---------|-------------|
-| `npm start` | Inicia Metro (`expo start`) |
-| `npm run android` | Abre en Android |
-| `npm run ios` | Abre en iOS |
-| `npm run lint` | ESLint |
