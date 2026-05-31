@@ -6,7 +6,7 @@ export async function getActions() {
   return data;
 }
 
-export async function postAction(actionId, payload = {}) {
-  const { data } = await client.post(ENDPOINTS.actions.execute(actionId), payload);
+export async function postAction(actionName) {
+  const { data } = await client.post(ENDPOINTS.actions.execute(actionName));
   return data;
 }

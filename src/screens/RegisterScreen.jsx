@@ -12,9 +12,10 @@ import * as authApi from '../api/auth';
 import { colors, spacing, fonts } from '../constants/theme';
 
 export default function RegisterScreen({ navigation }) {
-  const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -22,10 +23,13 @@ export default function RegisterScreen({ navigation }) {
   const handleRegister = async () => {
     setError('');
     setSuccess('');
+    if (password !== confirmPassword) {
+      setError('Las contraseñas no coinciden.');
+      return;
+    }
     setSubmitting(true);
     try {
-      // TODO: connect to API — ajustar campos según contrato del backend
-      await authApi.register(email.trim(), password, name.trim());
+      await authApi.register(username.trim(), email.trim(), password);
       setSuccess('Cuenta creada. Ya podés iniciar sesión.');
       setTimeout(() => navigation.navigate('Login'), 1500);
     } catch (err) {
@@ -43,10 +47,11 @@ export default function RegisterScreen({ navigation }) {
     <View style={styles.container}>
       <TextInput
         style={styles.input}
-        placeholder="Nombre"
+        placeholder="Nombre de usuario"
         placeholderTextColor={colors.textMuted}
-        value={name}
-        onChangeText={setName}
+        autoCapitalize="none"
+        value={username}
+        onChangeText={setUsername}
       />
       <TextInput
         style={styles.input}
@@ -64,6 +69,14 @@ export default function RegisterScreen({ navigation }) {
         secureTextEntry
         value={password}
         onChangeText={setPassword}
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Confirmar contraseña"
+        placeholderTextColor={colors.textMuted}
+        secureTextEntry
+        value={confirmPassword}
+        onChangeText={setConfirmPassword}
       />
 
       {error ? <Text style={styles.error}>{error}</Text> : null}

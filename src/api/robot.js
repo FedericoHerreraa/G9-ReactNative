@@ -11,8 +11,8 @@ export async function disconnectRobot() {
   return data;
 }
 
-export async function moveRobot(direction) {
-  const { data } = await client.post(ENDPOINTS.robot.move, { direction });
+export async function moveRobot({ vx, vy, vyaw }) {
+  const { data } = await client.post(ENDPOINTS.robot.move, { vx, vy, vyaw });
   return data;
 }
 

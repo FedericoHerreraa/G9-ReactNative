@@ -13,23 +13,31 @@ export function RobotProvider({ children }) {
   const [statusData, setStatusData] = useState(null);
 
   const connectRobot = useCallback(async () => {
-  // TODO: connect to API — validar respuesta real del backend
-    const data = await robotApi.connectRobot({
-      robot_type: robotType,
-      network_interface: networkInterface,
-    });
-    setIsConnected(true);
-    setConnectionStatus('connected');
-    setStatusData(data);
-    return data;
+    setConnectionStatus('connecting');
+    try {
+      const data = await robotApi.connectRobot({
+        robot_type: robotType,
+        network_interface: networkInterface,
+      });
+      setIsConnected(true);
+      setConnectionStatus('connected');
+      setStatusData(data);
+      return data;
+    } catch (err) {
+      setIsConnected(false);
+      setConnectionStatus('error');
+      throw err;
+    }
   }, [robotType, networkInterface]);
 
   const disconnectRobot = useCallback(async () => {
-  // TODO: connect to API
-    await robotApi.disconnectRobot();
-    setIsConnected(false);
-    setConnectionStatus('disconnected');
-    setStatusData(null);
+    try {
+      await robotApi.disconnectRobot();
+    } finally {
+      setIsConnected(false);
+      setConnectionStatus('disconnected');
+      setStatusData(null);
+    }
   }, []);
 
   const refreshStatus = useCallback(async () => {

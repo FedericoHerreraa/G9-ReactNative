@@ -9,12 +9,14 @@ import {
 } from 'react-native';
 
 import * as actionsApi from '../api/actions';
+import { useCommandLog } from '../hooks/useCommandLog';
 import { useRobot } from '../context/RobotContext';
 import { colors, getRobotTheme, spacing, fonts } from '../constants/theme';
 
 export default function ActionsScreen() {
   const { isConnected, robotType } = useRobot();
   const theme = getRobotTheme(robotType);
+  const { logCommand } = useCommandLog();
   const [actions, setActions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -23,9 +25,9 @@ export default function ActionsScreen() {
     setLoading(true);
     setError('');
     try {
-      // TODO: connect to API — mapear respuesta del listado de acciones
       const data = await actionsApi.getActions();
-      const list = Array.isArray(data) ? data : (data.items ?? []);
+      // El backend devuelve { robot_type, actions: string[] }
+      const list = Array.isArray(data) ? data : (data.actions ?? []);
       setActions(list);
     } catch (err) {
       setError(err.response?.data?.message ?? 'No se pudieron cargar las acciones.');
@@ -39,12 +41,17 @@ export default function ActionsScreen() {
     loadActions();
   }, [loadActions]);
 
+  // action es un string (nombre de la acción)
   const handleExecute = async (action) => {
     if (!isConnected) return;
+    let success = false;
     try {
-      await actionsApi.postAction(action.id ?? action.name, { robot_type: robotType });
+      await actionsApi.postAction(action);
+      success = true;
     } catch (err) {
       setError(err.response?.data?.message ?? 'Error al ejecutar la acción.');
+    } finally {
+      logCommand({ action, success });
     }
   };
 
@@ -65,7 +72,7 @@ export default function ActionsScreen() {
 
       <FlatList
         data={actions}
-        keyExtractor={(item, index) => String(item.id ?? item.name ?? index)}
+        keyExtractor={(item, index) => String(item ?? index)}
         contentContainerStyle={styles.list}
         ListEmptyComponent={
           <Text style={styles.empty}>No hay acciones disponibles.</Text>
@@ -75,10 +82,7 @@ export default function ActionsScreen() {
             style={[styles.card, !isConnected && styles.cardDisabled]}
             onPress={() => handleExecute(item)}
             disabled={!isConnected}>
-            <Text style={styles.cardTitle}>{item.name ?? item.label ?? 'Acción'}</Text>
-            {item.description ? (
-              <Text style={styles.cardDesc}>{item.description}</Text>
-            ) : null}
+            <Text style={styles.cardTitle}>{item}</Text>
           </Pressable>
         )}
       />

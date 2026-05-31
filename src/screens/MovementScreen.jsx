@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import VirtualJoystick from '../components/VirtualJoystick';
 import * as robotApi from '../api/robot';
+import { useCommandLog } from '../hooks/useCommandLog';
 import { useRobot } from '../context/RobotContext';
 import { colors, getRobotTheme, spacing, fonts } from '../constants/theme';
 
@@ -23,6 +24,7 @@ const DIRECTIONS = [
 export default function MovementScreen() {
   const { isConnected, robotType } = useRobot();
   const theme = getRobotTheme(robotType);
+  const { logCommand } = useCommandLog();
   const [feedback, setFeedback] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -30,14 +32,17 @@ export default function MovementScreen() {
     if (!isConnected) return;
     setLoading(true);
     setFeedback(null);
+    let success = false;
     try {
       // TODO: connect to API — confirmar payload de movimiento con backend
       await fn();
+      success = true;
       setFeedback({ type: 'success', message: `${label}: OK` });
     } catch {
       setFeedback({ type: 'error', message: `${label}: falló` });
     } finally {
       setLoading(false);
+      logCommand({ action: label, success });
     }
   };
 
@@ -77,7 +82,7 @@ export default function MovementScreen() {
           <DirectionButton
             direction={DIRECTIONS[0]}
             theme={theme}
-            onPress={() => runCommand(() => robotApi.moveRobot('up'), 'Adelante')}
+            onPress={() => runCommand(() => robotApi.moveRobot({ vx: 1, vy: 0, vyaw: 0 }), 'Adelante')}
             disabled={loading}
           />
         </View>
@@ -85,14 +90,14 @@ export default function MovementScreen() {
           <DirectionButton
             direction={DIRECTIONS[2]}
             theme={theme}
-            onPress={() => runCommand(() => robotApi.moveRobot('left'), 'Izquierda')}
+            onPress={() => runCommand(() => robotApi.moveRobot({ vx: 0, vy: 0, vyaw: 1 }), 'Izquierda')}
             disabled={loading}
           />
           <View style={styles.dpadCenter} />
           <DirectionButton
             direction={DIRECTIONS[3]}
             theme={theme}
-            onPress={() => runCommand(() => robotApi.moveRobot('right'), 'Derecha')}
+            onPress={() => runCommand(() => robotApi.moveRobot({ vx: 0, vy: 0, vyaw: -1 }), 'Derecha')}
             disabled={loading}
           />
         </View>
@@ -100,7 +105,7 @@ export default function MovementScreen() {
           <DirectionButton
             direction={DIRECTIONS[1]}
             theme={theme}
-            onPress={() => runCommand(() => robotApi.moveRobot('down'), 'Atrás')}
+            onPress={() => runCommand(() => robotApi.moveRobot({ vx: -1, vy: 0, vyaw: 0 }), 'Atrás')}
             disabled={loading}
           />
         </View>
