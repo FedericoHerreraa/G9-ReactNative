@@ -1,15 +1,16 @@
-import { View } from 'react-native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Pressable, View } from 'react-native';
 
 import StatusBadge from '../components/StatusBadge';
-import ConnectionScreen from '../screens/ConnectionScreen';
-import MovementScreen from '../screens/MovementScreen';
-import ActionsScreen from '../screens/ActionsScreen';
-import HistoryScreen from '../screens/HistoryScreen';
-import { useStatusPolling } from '../hooks/useStatusPolling';
-import { useRobot } from '../context/RobotContext';
 import { colors, spacing } from '../constants/theme';
+import { useAuth } from '../context/AuthContext';
+import { useRobot } from '../context/RobotContext';
+import { useStatusPolling } from '../hooks/useStatusPolling';
+import ActionsScreen from '../screens/ActionsScreen';
+import ConnectionScreen from '../screens/ConnectionScreen';
+import HistoryScreen from '../screens/HistoryScreen';
+import MovementScreen from '../screens/MovementScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -29,6 +30,15 @@ function HeaderStatusBadge() {
   );
 }
 
+function HeaderLogoutButton() {
+  const { logout } = useAuth();
+  return (
+    <Pressable onPress={logout} style={{ marginLeft: spacing.md }}>
+      <Ionicons name="log-out-outline" size={24} color={colors.text} />
+    </Pressable>
+  );
+}
+
 export default function MainTabs() {
   useStatusPolling();
 
@@ -37,6 +47,7 @@ export default function MainTabs() {
       screenOptions={({ route }) => ({
         headerStyle: { backgroundColor: colors.surface },
         headerTintColor: colors.text,
+        headerLeft: () => <HeaderLogoutButton />,
         headerRight: () => <HeaderStatusBadge />,
         tabBarStyle: {
           backgroundColor: colors.surface,

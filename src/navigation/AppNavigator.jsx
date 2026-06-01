@@ -8,7 +8,7 @@ import MainTabs from './MainTabs';
 import { navigationRef } from './navigationRef';
 
 export default function AppNavigator() {
-  const { token, isLoading } = useAuth();
+  const { token, isLoading, isAuthenticated } = useAuth();
 
   if (isLoading) {
     return (
@@ -19,8 +19,8 @@ export default function AppNavigator() {
   }
 
   return (
-    <NavigationContainer ref={navigationRef} key={token ? 'main' : 'auth'}>
-      {token ? <MainTabs /> : <AuthStack />}
+    <NavigationContainer ref={navigationRef} key={isAuthenticated ? 'main' : 'auth'}>
+      {isAuthenticated ? <MainTabs /> : <AuthStack />}
     </NavigationContainer>
   );
 }

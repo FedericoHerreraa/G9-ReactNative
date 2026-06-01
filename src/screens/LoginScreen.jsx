@@ -7,7 +7,6 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  View,
 } from 'react-native';
 
 import { colors, fonts, spacing } from '../constants/theme';
@@ -20,21 +19,44 @@ export default function LoginScreen({ navigation }) {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const handleLogin = async () => {
-    if (!identifier.trim() || !password) {
-      setError('Completá usuario/email y contraseña.');
-      return;
+  const validate = () => {
+    if (!identifier.trim()) {
+      setError('Completá el email o usuario.');
+      return false;
     }
+    if (identifier.includes('@')) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(identifier.trim())) {
+        setError('El email no tiene un formato válido.');
+        return false;
+      }
+    }
+    if (!password) {
+      setError('La contraseña es obligatoria.');
+      return false;
+    }
+    return true;
+  };
+
+  const handleLogin = async () => {
     setError('');
+    if (!validate()) return;
     setSubmitting(true);
     try {
       await login(identifier.trim(), password);
     } catch (err) {
-      const message =
-        err.response?.data?.message ??
-        err.response?.data?.detail ??
-        'No se pudo iniciar sesión. Verificá tus credenciales.';
-      setError(message);
+      const status = err.response?.status;
+      if (status === 401 || status === 400) {
+        setError('Email o contraseña incorrectos.');
+      } else if (status === 404) {
+        setError('Usuario no encontrado.');
+      } else {
+        setError(
+          err.response?.data?.message ??
+          err.response?.data?.detail ??
+          'No se pudo iniciar sesión. Verificá tus credenciales.'
+        );
+      }
     } finally {
       setSubmitting(false);
     }
@@ -67,8 +89,9 @@ export default function LoginScreen({ navigation }) {
         placeholder="Email o usuario"
         placeholderTextColor={colors.textMuted}
         autoCapitalize="none"
+        autoCorrect={false}
         value={identifier}
-        onChangeText={setIdentifier}
+        onChangeText={(t) => { setIdentifier(t); setError(''); }}
       />
       <TextInput
         style={styles.input}
@@ -76,7 +99,7 @@ export default function LoginScreen({ navigation }) {
         placeholderTextColor={colors.textMuted}
         secureTextEntry
         value={password}
-        onChangeText={setPassword}
+        onChangeText={(t) => { setPassword(t); setError(''); }}
       />
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -114,26 +137,10 @@ export default function LoginScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  scroll: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  container: {
-    flexGrow: 1,
-    padding: spacing.lg,
-    justifyContent: 'center',
-  },
-  title: {
-    color: colors.text,
-    fontSize: fonts.sizes.xxl,
-    fontWeight: '700',
-    marginBottom: spacing.xs,
-  },
-  subtitle: {
-    color: colors.textMuted,
-    fontSize: fonts.sizes.md,
-    marginBottom: spacing.xl,
-  },
+  scroll: { flex: 1, backgroundColor: colors.background },
+  container: { flexGrow: 1, padding: spacing.lg, justifyContent: 'center' },
+  title: { color: colors.text, fontSize: fonts.sizes.xxl, fontWeight: '700', marginBottom: spacing.xs },
+  subtitle: { color: colors.textMuted, fontSize: fonts.sizes.md, marginBottom: spacing.xl },
   input: {
     backgroundColor: colors.surface,
     borderWidth: 1,
@@ -144,49 +151,12 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     fontSize: fonts.sizes.lg,
   },
-  error: {
-    color: colors.error,
-    marginBottom: spacing.md,
-    fontSize: fonts.sizes.md,
-  },
-  button: {
-    backgroundColor: colors.text,
-    padding: spacing.md,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-  buttonText: {
-    color: colors.black,
-    fontWeight: '700',
-    fontSize: fonts.sizes.lg,
-  },
-  link: {
-    color: colors.textMuted,
-    textAlign: 'center',
-    fontSize: fonts.sizes.md,
-  },
-  devHint: {
-    color: colors.textMuted,
-    fontSize: fonts.sizes.sm,
-    textAlign: 'center',
-    marginTop: spacing.xl,
-    marginBottom: spacing.sm,
-  },
-  devButton: {
-    padding: spacing.md,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.warning,
-    borderStyle: 'dashed',
-    alignItems: 'center',
-  },
-  devButtonText: {
-    color: colors.warning,
-    fontSize: fonts.sizes.md,
-    fontWeight: '600',
-  },
+  error: { color: colors.error, marginBottom: spacing.md, fontSize: fonts.sizes.md },
+  button: { backgroundColor: colors.text, padding: spacing.md, borderRadius: 10, alignItems: 'center', marginBottom: spacing.md },
+  buttonDisabled: { opacity: 0.7 },
+  buttonText: { color: colors.black, fontWeight: '700', fontSize: fonts.sizes.lg },
+  link: { color: colors.textMuted, textAlign: 'center', fontSize: fonts.sizes.md },
+  devHint: { color: colors.textMuted, fontSize: fonts.sizes.sm, textAlign: 'center', marginTop: spacing.xl, marginBottom: spacing.sm },
+  devButton: { padding: spacing.md, borderRadius: 10, borderWidth: 1, borderColor: colors.warning, borderStyle: 'dashed', alignItems: 'center' },
+  devButtonText: { color: colors.warning, fontSize: fonts.sizes.md, fontWeight: '600' },
 });
