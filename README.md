@@ -54,11 +54,11 @@ src/
 
 ## Logging de comandos
 
-Cada comando (movimiento, acción, stop, etc.) se guarda en **historial local** (AsyncStorage) vía `useCommandLog`. La API no expone `/history`.
+Cada comando (movimiento, acción, stop, etc.) se registra en el servidor vía `useCommandLog` (`POST /history`).
 
 ```js
 const { logCommand } = useCommandLog();
-await logCommand({ action: "Adelante", success: true });
+await logCommand({ action: 'Adelante', success: true });
 ```
 
 ## Backend

@@ -11,7 +11,6 @@ import {
 
 import CommandHistoryItem from '../components/CommandHistoryItem';
 import * as historyApi from '../api/history';
-import { getCommandHistory } from '../utils/commandHistory';
 import { useRobot } from '../context/RobotContext';
 import { colors, getRobotTheme, spacing, fonts } from '../constants/theme';
 
@@ -27,24 +26,15 @@ export default function HistoryScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
-  const [source, setSource] = useState('server');
 
   const loadHistory = useCallback(async () => {
     setError('');
     try {
       const data = await historyApi.getHistory();
       setHistory(normalizeHistoryList(data));
-      setSource('server');
     } catch (err) {
-      const local = await getCommandHistory();
-      setHistory(local);
-      setSource('local');
-      if (local.length === 0) {
-        setError(
-          err.response?.data?.message ??
-            'No se pudo cargar el historial del servidor. Los comandos se guardan en el dispositivo cuando enviás acciones.'
-        );
-      }
+      setHistory([]);
+      setError(err.response?.data?.message ?? 'No se pudo cargar el historial.');
     }
   }, []);
 
@@ -78,11 +68,6 @@ export default function HistoryScreen() {
 
   return (
     <View style={styles.container}>
-      {source === 'local' ? (
-        <Text style={styles.hint}>
-          Mostrando historial local (sin respuesta del servidor o endpoint no disponible).
-        </Text>
-      ) : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
       <FlatList
         data={history}
@@ -110,12 +95,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: colors.background,
-  },
-  hint: {
-    color: colors.textMuted,
-    fontSize: fonts.sizes.sm,
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm,
   },
   error: {
     color: colors.error,
