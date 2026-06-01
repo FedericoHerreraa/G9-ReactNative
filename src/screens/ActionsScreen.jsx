@@ -14,7 +14,6 @@ import { colors, getRobotTheme, spacing, fonts } from '../constants/theme';
 import AppButton from '../components/AppButton';
 import AppCard from '../components/AppCard';
 import ScreenContainer from '../components/ScreenContainer';
-import CommandHistoryItem from '../components/CommandHistoryItem';
 
 export default function ActionsScreen() {
   const { isConnected, robotType } = useRobot();
@@ -25,7 +24,6 @@ export default function ActionsScreen() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loadingAction, setLoadingAction] = useState(null);
-  const [localHistory, setLocalHistory] = useState([]);
 
   const loadActions = useCallback(async () => {
     setLoading(true);
@@ -66,11 +64,6 @@ export default function ActionsScreen() {
     } finally {
       setLoadingAction(null);
       logCommand({ action, success: actionSuccess });
-      setLocalHistory(prev => [{
-        action,
-        status: actionSuccess ? 'ok' : 'error',
-        timestamp: new Date().toLocaleTimeString(),
-      }, ...prev].slice(0, 10));
     }
   };
 
@@ -114,14 +107,6 @@ export default function ActionsScreen() {
         )}
       />
 
-      {localHistory.length > 0 && (
-        <View style={styles.historySection}>
-          <Text style={styles.historyTitle}>Últimas acciones</Text>
-          {localHistory.map((item, index) => (
-            <CommandHistoryItem key={index} item={item} />
-          ))}
-        </View>
-      )}
     </ScreenContainer>
   );
 }
@@ -169,16 +154,5 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textAlign: 'center',
     marginTop: spacing.xl,
-  },
-  historySection: {
-    marginTop: spacing.lg,
-  },
-  historyTitle: {
-    color: colors.textMuted,
-    fontSize: fonts.sizes.sm,
-    fontWeight: '600',
-    marginBottom: spacing.sm,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
   },
 });
