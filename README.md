@@ -29,20 +29,20 @@ npm run android    # abre en emulador Android
 
 ## Pantallas
 
-| Pantalla | Descripción |
-|----------|-------------|
-| Login | Email o usuario + contraseña. Sesión persistente. |
-| Registro | Nombre de usuario, email, contraseña con confirmación. |
-| Conexión | Selector Go2/G1, interfaz de red, conectar/desconectar, estado JSON. |
+| Pantalla   | Descripción                                                          |
+| ---------- | -------------------------------------------------------------------- |
+| Login      | Email o usuario + contraseña. Sesión persistente.                    |
+| Registro   | Nombre de usuario, email, contraseña con confirmación.               |
+| Conexión   | Selector Go2/G1, interfaz de red, conectar/desconectar, estado JSON. |
 | Movimiento | D-pad direccional, stop/levantarse/sentarse, joystick (placeholder). |
-| Acciones | Lista de acciones del robot, ejecución con feedback visual. |
-| Historial | Comandos enviados con resultado y timestamp, se refresca al entrar. |
+| Acciones   | Lista de acciones del robot, ejecución con feedback visual.          |
+| Historial  | Comandos enviados con resultado y timestamp, se refresca al entrar.  |
 
 ## Estructura
 
 ```
 src/
-  api/          # Cliente Axios + endpoints (auth, robot, actions, history)
+  api/          # Cliente Axios + endpoints (auth, robot, actions)
   components/   # UI reutilizable (joystick, selector, badge, historial)
   constants/    # Endpoints, colores y tema (Go2 naranja / G1 azul)
   context/      # AuthContext (sesión) y RobotContext (estado del robot)
@@ -54,40 +54,47 @@ src/
 
 ## Logging de comandos
 
-Cada vez que se envía un comando al robot (movimiento, acción, stop, levantarse, sentarse), se registra automáticamente en el servidor vía `useCommandLog`:
+Cada comando (movimiento, acción, stop, etc.) se registra en el servidor vía `useCommandLog` (`POST /history`).
 
 ```js
 const { logCommand } = useCommandLog();
 await logCommand({ action: 'Adelante', success: true });
 ```
 
-El historial es personal: el token del usuario se envía en cada request y el servidor filtra por cuenta.
-
 ## Backend
 
-La app consume la API REST del repositorio `Horix89/unitree_robot_api`. Endpoints principales:
+La app consume la API REST de [Horix89/unitree_robot_api](https://github.com/Horix89/unitree_robot_api). Rutas definidas en `src/constants/api.js`:
 
-| Método | Endpoint | Descripción |
-|--------|----------|-------------|
-| POST | `/auth/token` | Login |
-| POST | `/auth/register` | Registro |
-| GET | `/status` | Estado del robot |
-| POST | `/connect` | Conectar robot |
-| POST | `/disconnect` | Desconectar robot |
-| POST | `/move` | Mover `{ vx, vy, vyaw }` |
-| POST | `/stop` | Detener |
-| POST | `/standup` | Levantarse |
-| POST | `/sitdown` | Sentarse |
-| GET | `/actions` | Lista de acciones disponibles |
-| POST | `/action/{nombre}` | Ejecutar acción |
+| Método | Endpoint                | Descripción                                       |
+| ------ | ----------------------- | ------------------------------------------------- |
+| POST   | `/auth/register`        | Registro `{ username, email, password }`          |
+| POST   | `/auth/token`           | Login `{ identifier, password }` → `access_token` |
+| POST   | `/connect`              | Conectar `{ robot_type, network_interface? }`     |
+| POST   | `/disconnect`           | Desconectar                                       |
+| GET    | `/status`               | Estado de conexión                                |
+| POST   | `/move`                 | Mover `{ vx, vy, vyaw }`                          |
+| POST   | `/stop`                 | Detener                                           |
+| POST   | `/standup`              | Levantarse                                        |
+| POST   | `/sitdown`              | Sentarse                                          |
+| POST   | `/damp`                 | Modo amortiguado                                  |
+| POST   | `/handstand`            | Parado de manos `{ enable }`                      |
+| POST   | `/freebound`            | Free bound `{ enable }`                           |
+| POST   | `/freeavoid`            | Free avoid `{ enable }`                           |
+| POST   | `/walkupright`          | Caminar erguido `{ enable }`                      |
+| POST   | `/crossstep`            | Paso cruzado `{ enable }`                         |
+| POST   | `/freejump`             | Salto libre `{ enable }`                          |
+| GET    | `/actions`              | Lista `{ robot_type, actions[] }`                 |
+| POST   | `/action/{action_name}` | Ejecutar acción                                   |
+
+Todos los endpoints de robot requieren header `Authorization: Bearer <token>`.
 
 ## Stack
 
-| Herramienta | Uso |
-|-------------|-----|
-| Expo SDK 54 | Runtime y tooling |
-| React Navigation 7 | Stack (auth) + Bottom Tabs (main) |
-| Axios | Cliente HTTP con interceptores (token, 401, errores de red) |
-| AsyncStorage | Persistencia de sesión |
-| Reanimated | Preparado para joystick |
-| Expo Vector Icons | Iconografía |
+| Herramienta        | Uso                                                         |
+| ------------------ | ----------------------------------------------------------- |
+| Expo SDK 54        | Runtime y tooling                                           |
+| React Navigation 7 | Stack (auth) + Bottom Tabs (main)                           |
+| Axios              | Cliente HTTP con interceptores (token, 401, errores de red) |
+| AsyncStorage       | Persistencia de sesión                                      |
+| Reanimated         | Preparado para joystick                                     |
+| Expo Vector Icons  | Iconografía                                                 |

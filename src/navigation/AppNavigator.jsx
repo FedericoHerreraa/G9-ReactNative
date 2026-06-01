@@ -1,11 +1,11 @@
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
-import { useAuth } from '../context/AuthContext';
 import { colors } from '../constants/theme';
-import { navigationRef } from './navigationRef';
+import { useAuth } from '../context/AuthContext';
 import AuthStack from './AuthStack';
 import MainTabs from './MainTabs';
+import { navigationRef } from './navigationRef';
 
 export default function AppNavigator() {
   const { token, isLoading } = useAuth();
@@ -19,7 +19,7 @@ export default function AppNavigator() {
   }
 
   return (
-    <NavigationContainer ref={navigationRef}>
+    <NavigationContainer ref={navigationRef} key={token ? 'main' : 'auth'}>
       {token ? <MainTabs /> : <AuthStack />}
     </NavigationContainer>
   );

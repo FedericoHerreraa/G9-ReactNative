@@ -1,11 +1,15 @@
+import { View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 
+import StatusBadge from '../components/StatusBadge';
 import ConnectionScreen from '../screens/ConnectionScreen';
 import MovementScreen from '../screens/MovementScreen';
 import ActionsScreen from '../screens/ActionsScreen';
 import HistoryScreen from '../screens/HistoryScreen';
-import { colors } from '../constants/theme';
+import { useStatusPolling } from '../hooks/useStatusPolling';
+import { useRobot } from '../context/RobotContext';
+import { colors, spacing } from '../constants/theme';
 
 const Tab = createBottomTabNavigator();
 
@@ -16,12 +20,24 @@ const TAB_ICONS = {
   History: 'time-outline',
 };
 
+function HeaderStatusBadge() {
+  const { connectionStatus } = useRobot();
+  return (
+    <View style={{ marginRight: spacing.md }}>
+      <StatusBadge status={connectionStatus} compact />
+    </View>
+  );
+}
+
 export default function MainTabs() {
+  useStatusPolling();
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerStyle: { backgroundColor: colors.surface },
         headerTintColor: colors.text,
+        headerRight: () => <HeaderStatusBadge />,
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,

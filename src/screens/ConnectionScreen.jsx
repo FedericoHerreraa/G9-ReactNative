@@ -26,6 +26,8 @@ export default function ConnectionScreen() {
     connectRobot,
     disconnectRobot,
     refreshStatus,
+    simulateDevConnection,
+    isDevBypassAuthEnabled,
   } = useRobot();
 
   const [loading, setLoading] = useState(false);
@@ -94,6 +96,12 @@ export default function ConnectionScreen() {
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
+      {isDevBypassAuthEnabled ? (
+        <Pressable style={styles.devSimulateButton} onPress={simulateDevConnection}>
+          <Text style={styles.devSimulateText}>Simular robot conectado (sin API)</Text>
+        </Pressable>
+      ) : null}
+
       <View style={styles.actions}>
         <Pressable
           style={[styles.button, { backgroundColor: theme.primary }]}
@@ -158,6 +166,19 @@ const styles = StyleSheet.create({
   },
   error: {
     color: colors.error,
+    fontSize: fonts.sizes.md,
+  },
+  devSimulateButton: {
+    padding: spacing.md,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.warning,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+  },
+  devSimulateText: {
+    color: colors.warning,
+    fontWeight: '600',
     fontSize: fonts.sizes.md,
   },
   actions: {

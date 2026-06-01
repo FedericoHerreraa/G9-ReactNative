@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   ActivityIndicator,
@@ -12,7 +12,12 @@ import {
 import CommandHistoryItem from '../components/CommandHistoryItem';
 import * as historyApi from '../api/history';
 import { useRobot } from '../context/RobotContext';
-import { colors, getRobotTheme, spacing } from '../constants/theme';
+import { colors, getRobotTheme, spacing, fonts } from '../constants/theme';
+
+function normalizeHistoryList(data) {
+  if (Array.isArray(data)) return data;
+  return data?.items ?? [];
+}
 
 export default function HistoryScreen() {
   const { robotType } = useRobot();
@@ -25,27 +30,25 @@ export default function HistoryScreen() {
   const loadHistory = useCallback(async () => {
     setError('');
     try {
-      // TODO: connect to API — paginación y filtros según backend
       const data = await historyApi.getHistory();
-      const list = Array.isArray(data) ? data : (data.items ?? []);
-      setHistory(list);
+      setHistory(normalizeHistoryList(data));
     } catch (err) {
-      setError(err.response?.data?.message ?? 'No se pudo cargar el historial.');
       setHistory([]);
+      setError(err.response?.data?.message ?? 'No se pudo cargar el historial.');
     }
   }, []);
 
-  useEffect(() => {
-    (async () => {
-      setLoading(true);
-      await loadHistory();
-      setLoading(false);
-    })();
-  }, [loadHistory]);
-
   useFocusEffect(
     useCallback(() => {
-      loadHistory();
+      let active = true;
+      (async () => {
+        setLoading(true);
+        await loadHistory();
+        if (active) setLoading(false);
+      })();
+      return () => {
+        active = false;
+      };
     }, [loadHistory])
   );
 
@@ -96,6 +99,7 @@ const styles = StyleSheet.create({
   error: {
     color: colors.error,
     padding: spacing.md,
+    fontSize: fonts.sizes.md,
   },
   list: {
     padding: spacing.md,
