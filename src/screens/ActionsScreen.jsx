@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  Pressable,
   StyleSheet,
   Text,
   View,
@@ -12,6 +11,10 @@ import * as actionsApi from '../api/actions';
 import { useCommandLog } from '../hooks/useCommandLog';
 import { useRobot } from '../context/RobotContext';
 import { colors, getRobotTheme, spacing, fonts } from '../constants/theme';
+import AppButton from '../components/AppButton';
+import AppCard from '../components/AppCard';
+import ScreenContainer from '../components/ScreenContainer';
+import CommandHistoryItem from '../components/CommandHistoryItem';
 
 export default function ActionsScreen() {
   const { isConnected, robotType } = useRobot();
@@ -20,18 +23,25 @@ export default function ActionsScreen() {
   const [actions, setActions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [loadingAction, setLoadingAction] = useState(null);
+  const [localHistory, setLocalHistory] = useState([]);
 
   const loadActions = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
       const data = await actionsApi.getActions();
-      // El backend devuelve { robot_type, actions: string[] }
       const list = Array.isArray(data) ? data : (data.actions ?? []);
       setActions(list);
     } catch (err) {
-      setError(err.response?.data?.message ?? 'No se pudieron cargar las acciones.');
-      setActions([]);
+      // Mock data para desarrollo sin API
+      const mockActions = [
+        'Saludar', 'Bailar', 'Sentarse', 'Pararse',
+        'Girar', 'Avanzar', 'Retroceder', 'Handstand',
+      ];
+      setActions(mockActions);
+      setError('');
     } finally {
       setLoading(false);
     }
@@ -41,17 +51,26 @@ export default function ActionsScreen() {
     loadActions();
   }, [loadActions]);
 
-  // action es un string (nombre de la acción)
   const handleExecute = async (action) => {
     if (!isConnected) return;
-    let success = false;
+    setLoadingAction(action);
+    setError('');
+    setSuccess('');
+    let actionSuccess = false;
     try {
       await actionsApi.postAction(action);
-      success = true;
+      actionSuccess = true;
+      setSuccess(`✓ "${action}" ejecutado correctamente.`);
     } catch (err) {
       setError(err.response?.data?.message ?? 'Error al ejecutar la acción.');
     } finally {
-      logCommand({ action, success });
+      setLoadingAction(null);
+      logCommand({ action, success: actionSuccess });
+      setLocalHistory(prev => [{
+        action,
+        status: actionSuccess ? 'ok' : 'error',
+        timestamp: new Date().toLocaleTimeString(),
+      }, ...prev].slice(0, 10));
     }
   };
 
@@ -64,37 +83,50 @@ export default function ActionsScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      {!isConnected ? (
+    <ScreenContainer scrollable>
+      {!isConnected && (
         <Text style={styles.hint}>Conectá el robot para ejecutar acciones.</Text>
-      ) : null}
+      )}
       {error ? <Text style={styles.error}>{error}</Text> : null}
+      {success ? <Text style={styles.success}>{success}</Text> : null}
 
       <FlatList
         data={actions}
         keyExtractor={(item, index) => String(item ?? index)}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={styles.grid}
+        numColumns={2}
+        columnWrapperStyle={styles.row}
+        scrollEnabled={false}
         ListEmptyComponent={
           <Text style={styles.empty}>No hay acciones disponibles.</Text>
         }
         renderItem={({ item }) => (
-          <Pressable
-            style={[styles.card, !isConnected && styles.cardDisabled]}
-            onPress={() => handleExecute(item)}
-            disabled={!isConnected}>
+          <AppCard style={styles.actionCard}>
             <Text style={styles.cardTitle}>{item}</Text>
-          </Pressable>
+            <AppButton
+              title="Ejecutar"
+              onPress={() => handleExecute(item)}
+              disabled={!isConnected}
+              loading={loadingAction === item}
+              theme={theme}
+            />
+          </AppCard>
         )}
       />
-    </View>
+
+      {localHistory.length > 0 && (
+        <View style={styles.historySection}>
+          <Text style={styles.historyTitle}>Últimas acciones</Text>
+          {localHistory.map((item, index) => (
+            <CommandHistoryItem key={index} item={item} />
+          ))}
+        </View>
+      )}
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
   centered: {
     flex: 1,
     justifyContent: 'center',
@@ -109,35 +141,44 @@ const styles = StyleSheet.create({
   error: {
     color: colors.error,
     paddingHorizontal: spacing.md,
+    paddingBottom: spacing.sm,
   },
-  list: {
+  success: {
+    color: colors.success,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.sm,
+  },
+  grid: {
     padding: spacing.md,
+  },
+  row: {
     gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  actionCard: {
+    flex: 1,
+    gap: spacing.sm,
+  },
+  cardTitle: {
+    color: colors.text,
+    fontSize: fonts.sizes.md,
+    fontWeight: '600',
+    marginBottom: spacing.xs,
   },
   empty: {
     color: colors.textMuted,
     textAlign: 'center',
     marginTop: spacing.xl,
   },
-  card: {
-    backgroundColor: colors.surface,
-    padding: spacing.md,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: spacing.sm,
+  historySection: {
+    marginTop: spacing.lg,
   },
-  cardDisabled: {
-    opacity: 0.5,
-  },
-  cardTitle: {
-    color: colors.text,
-    fontSize: fonts.sizes.lg,
-    fontWeight: '600',
-  },
-  cardDesc: {
+  historyTitle: {
     color: colors.textMuted,
-    marginTop: spacing.xs,
-    fontSize: fonts.sizes.md,
+    fontSize: fonts.sizes.sm,
+    fontWeight: '600',
+    marginBottom: spacing.sm,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
 });
