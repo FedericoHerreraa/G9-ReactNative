@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -6,13 +7,12 @@ import {
   Text,
   View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 
-import VirtualJoystick from '../components/VirtualJoystick';
 import * as robotApi from '../api/robot';
-import { useCommandLog } from '../hooks/useCommandLog';
+import VirtualJoystick from '../components/VirtualJoystick';
+import { colors, fonts, getRobotTheme, spacing } from '../constants/theme';
 import { useRobot } from '../context/RobotContext';
-import { colors, getRobotTheme, spacing, fonts } from '../constants/theme';
+import { useCommandLog } from '../hooks/useCommandLog';
 
 const DIRECTIONS = [
   { key: 'up', icon: 'arrow-up', label: 'Adelante' },
@@ -21,12 +21,21 @@ const DIRECTIONS = [
   { key: 'right', icon: 'arrow-forward', label: 'Derecha' },
 ];
 
+const MOVE_THROTTLE_MS = 120;
+
 export default function MovementScreen() {
   const { isConnected, robotType } = useRobot();
   const theme = getRobotTheme(robotType);
   const { logCommand } = useCommandLog();
   const [feedback, setFeedback] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  const showSuccess = useCallback((message) => {
+    setFeedback({ type: 'success', message });
+  }, []);
+  const showError = useCallback((message) => {
+    setFeedback({ type: 'error', message });
+  }, []);
 
   const runCommand = async (fn, label) => {
     if (!isConnected) return;
@@ -36,14 +45,64 @@ export default function MovementScreen() {
     try {
       await fn();
       success = true;
-      setFeedback({ type: 'success', message: `${label}: OK` });
+      showSuccess(`${label}: OK`);
     } catch {
-      setFeedback({ type: 'error', message: `${label}: falló` });
+      showError(`${label}: falló`);
     } finally {
       setLoading(false);
       logCommand({ action: label, success });
     }
   };
+
+  const lastMoveAt = useRef(0);
+  const sending = useRef(false);
+  const joystickActive = useRef(false);
+
+  const handleJoystickMove = useCallback(
+    (vx, vy, vyaw) => {
+      if (!isConnected) return;
+      joystickActive.current = true;
+
+      const now = Date.now();
+      if (now - lastMoveAt.current < MOVE_THROTTLE_MS) return; 
+      if (sending.current) return; 
+      lastMoveAt.current = now;
+      sending.current = true;
+
+      robotApi
+        .moveRobot({ vx, vy, vyaw })
+        .then(() => {
+          showSuccess(`Joystick: vx ${vx} · vyaw ${vyaw}`);
+        })
+        .catch(() => {
+          showError('Joystick: falló el envío');
+        })
+        .finally(() => {
+          sending.current = false;
+        });
+    },
+    [isConnected, showSuccess, showError]
+  );
+
+  const handleJoystickRelease = useCallback(() => {
+    if (!isConnected) return;
+    if (!joystickActive.current) return;
+    joystickActive.current = false;
+
+    let success = false;
+    robotApi
+      .stopRobot()
+      .then(() => {
+        success = true;
+        showSuccess('Joystick: detenido');
+      })
+      .catch(() => {
+        showError('Stop: falló');
+      })
+      .finally(() => {
+        logCommand({ action: 'Joystick move', success });
+      });
+  }, [isConnected, showSuccess, showError, logCommand]);
 
   const borderColor =
     feedback?.type === 'success'
@@ -131,7 +190,11 @@ export default function MovementScreen() {
         />
       </View>
 
-      <VirtualJoystick disabled={!isConnected} />
+      <VirtualJoystick
+        disabled={!isConnected}
+        onMove={handleJoystickMove}
+        onRelease={handleJoystickRelease}
+      />
 
       {loading ? (
         <ActivityIndicator style={styles.loader} color={theme.primary} />
