@@ -1,19 +1,29 @@
+
 export const BASE_URL =
   process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:8000';
 
 export const ENDPOINTS = {
   auth: {
-    login: '/auth/token',
     register: '/auth/register',
+    login: '/auth/token',
   },
-  robot: {
+  connection: {
     connect: '/connect',
     disconnect: '/disconnect',
+    status: '/status',
+  },
+  motion: {
     move: '/move',
     stop: '/stop',
     standup: '/standup',
     sitdown: '/sitdown',
-    status: '/status',
+    damp: '/damp',
+    handstand: '/handstand',
+    freebound: '/freebound',
+    freeavoid: '/freeavoid',
+    walkupright: '/walkupright',
+    crossstep: '/crossstep',
+    freejump: '/freejump',
   },
   actions: {
     list: '/actions',

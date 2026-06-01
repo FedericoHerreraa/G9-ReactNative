@@ -1,24 +1,30 @@
 import { useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
 
+import { colors, fonts, spacing } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
-import { colors, spacing, fonts } from '../constants/theme';
 
 export default function LoginScreen({ navigation }) {
-  const { login } = useAuth();
+  const { login, loginAsDev, isDevBypassAuthEnabled } = useAuth();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const handleLogin = async () => {
+    if (!identifier.trim() || !password) {
+      setError('Completá usuario/email y contraseña.');
+      return;
+    }
     setError('');
     setSubmitting(true);
     try {
@@ -34,8 +40,25 @@ export default function LoginScreen({ navigation }) {
     }
   };
 
+  const handleDevLogin = async () => {
+    setError('');
+    setSubmitting(true);
+    try {
+      await loginAsDev();
+    } catch (err) {
+      const message = err?.message ?? 'No se pudo iniciar el modo desarrollo.';
+      setError(message);
+      Alert.alert('Modo desarrollo', message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
-    <View style={styles.container}>
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled">
       <Text style={styles.title}>Control Unitree</Text>
       <Text style={styles.subtitle}>Go2 / G1 vía REST API</Text>
 
@@ -72,16 +95,33 @@ export default function LoginScreen({ navigation }) {
       <Pressable onPress={() => navigation.navigate('Register')}>
         <Text style={styles.link}>¿No tenés cuenta? Registrate</Text>
       </Pressable>
-    </View>
+
+      {isDevBypassAuthEnabled ? (
+        <>
+          <Text style={styles.devHint}>
+            Modo desarrollo: no hace falta completar email ni contraseña.
+          </Text>
+          <Pressable
+            style={[styles.devButton, submitting && styles.buttonDisabled]}
+            onPress={handleDevLogin}
+            disabled={submitting}>
+            <Text style={styles.devButtonText}>Entrar sin API (desarrollo)</Text>
+          </Pressable>
+        </>
+      ) : null}
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  scroll: {
     flex: 1,
+    backgroundColor: colors.background,
+  },
+  container: {
+    flexGrow: 1,
     padding: spacing.lg,
     justifyContent: 'center',
-    backgroundColor: colors.background,
   },
   title: {
     color: colors.text,
@@ -128,5 +168,25 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textAlign: 'center',
     fontSize: fonts.sizes.md,
+  },
+  devHint: {
+    color: colors.textMuted,
+    fontSize: fonts.sizes.sm,
+    textAlign: 'center',
+    marginTop: spacing.xl,
+    marginBottom: spacing.sm,
+  },
+  devButton: {
+    padding: spacing.md,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.warning,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+  },
+  devButtonText: {
+    color: colors.warning,
+    fontSize: fonts.sizes.md,
+    fontWeight: '600',
   },
 });

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   ActivityIndicator,
@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 
 import CommandHistoryItem from '../components/CommandHistoryItem';
-import * as historyApi from '../api/history';
+import { getCommandHistory } from '../utils/commandHistory';
 import { useRobot } from '../context/RobotContext';
 import { colors, getRobotTheme, spacing } from '../constants/theme';
 
@@ -20,33 +20,27 @@ export default function HistoryScreen() {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState('');
 
   const loadHistory = useCallback(async () => {
-    setError('');
-    try {
-      // TODO: connect to API — paginación y filtros según backend
-      const data = await historyApi.getHistory();
-      const list = Array.isArray(data) ? data : (data.items ?? []);
-      setHistory(list);
-    } catch (err) {
-      setError(err.response?.data?.message ?? 'No se pudo cargar el historial.');
-      setHistory([]);
-    }
+    const list = await getCommandHistory();
+    setHistory(list);
   }, []);
-
-  useEffect(() => {
-    (async () => {
-      setLoading(true);
-      await loadHistory();
-      setLoading(false);
-    })();
-  }, [loadHistory]);
 
   useFocusEffect(
     useCallback(() => {
-      loadHistory();
-    }, [loadHistory])
+      let active = true;
+      (async () => {
+        setLoading(true);
+        const list = await getCommandHistory();
+        if (active) {
+          setHistory(list);
+          setLoading(false);
+        }
+      })();
+      return () => {
+        active = false;
+      };
+    }, [])
   );
 
   const onRefresh = async () => {
@@ -65,17 +59,19 @@ export default function HistoryScreen() {
 
   return (
     <View style={styles.container}>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      <Text style={styles.hint}>Historial local de esta instalación de la app.</Text>
       <FlatList
         data={history}
-        keyExtractor={(item, index) => String(item.id ?? index)}
+        keyExtractor={(item) => String(item.id)}
         renderItem={({ item }) => <CommandHistoryItem item={item} />}
         contentContainerStyle={styles.list}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
         }
         ListEmptyComponent={
-          <Text style={styles.empty}>El historial de comandos aparecerá aquí.</Text>
+          <Text style={styles.empty}>
+            Los comandos que envíes desde Movimiento o Acciones aparecerán aquí.
+          </Text>
         }
       />
     </View>
@@ -93,9 +89,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.background,
   },
-  error: {
-    color: colors.error,
-    padding: spacing.md,
+  hint: {
+    color: colors.textMuted,
+    fontSize: 12,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
   },
   list: {
     padding: spacing.md,

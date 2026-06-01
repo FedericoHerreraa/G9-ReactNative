@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 
 import * as authApi from '../api/auth';
 import client, { setUnauthorizedHandler } from '../api/client';
+import { DEV_AUTH_TOKEN, isDevBypassAuthEnabled } from '../constants/dev';
 import { clearSession, getToken, getUser, setToken, setUser } from '../utils/storage';
 
 const AuthContext = createContext(null);
@@ -50,8 +51,8 @@ export function AuthProvider({ children }) {
   const login = useCallback(
     async (identifier, password) => {
       const data = await authApi.login(identifier, password);
-      const nextToken = data.token ?? data.access_token;
-      const nextUser = data.user ?? { identifier, id: data.user_id };
+      const nextToken = data.access_token ?? data.token;
+      const nextUser = data.user ?? { identifier };
       await applySession(nextToken, nextUser);
       return data;
     },
@@ -62,16 +63,32 @@ export function AuthProvider({ children }) {
     await clearLocalSession();
   }, [clearLocalSession]);
 
+  const loginAsDev = useCallback(async () => {
+    const devUser = { identifier: 'dev@local', username: 'dev' };
+    setTokenState(DEV_AUTH_TOKEN);
+    setUserState(devUser);
+    client.defaults.headers.common.Authorization = `Bearer ${DEV_AUTH_TOKEN}`;
+    try {
+      await setToken(DEV_AUTH_TOKEN);
+      await setUser(devUser);
+    } catch {
+      // Si AsyncStorage falla, la sesión en memoria igual permite probar la UI
+    }
+    return { access_token: DEV_AUTH_TOKEN, user: devUser };
+  }, []);
+
   const value = useMemo(
     () => ({
       user,
       token,
       login,
+      loginAsDev,
       logout,
       isLoading,
       isAuthenticated: Boolean(token),
+      isDevBypassAuthEnabled,
     }),
-    [user, token, login, logout, isLoading]
+    [user, token, login, loginAsDev, logout, isLoading, isDevBypassAuthEnabled]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

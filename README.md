@@ -42,7 +42,7 @@ npm run android    # abre en emulador Android
 
 ```
 src/
-  api/          # Cliente Axios + endpoints (auth, robot, actions, history)
+  api/          # Cliente Axios + endpoints (auth, robot, actions)
   components/   # UI reutilizable (joystick, selector, badge, historial)
   constants/    # Endpoints, colores y tema (Go2 naranja / G1 azul)
   context/      # AuthContext (sesión) y RobotContext (estado del robot)
@@ -54,32 +54,39 @@ src/
 
 ## Logging de comandos
 
-Cada vez que se envía un comando al robot (movimiento, acción, stop, levantarse, sentarse), se registra automáticamente en el servidor vía `useCommandLog`:
+Cada comando (movimiento, acción, stop, etc.) se guarda en **historial local** (AsyncStorage) vía `useCommandLog`. La API no expone `/history`.
 
 ```js
 const { logCommand } = useCommandLog();
 await logCommand({ action: 'Adelante', success: true });
 ```
 
-El historial es personal: el token del usuario se envía en cada request y el servidor filtra por cuenta.
-
 ## Backend
 
-La app consume la API REST del repositorio `Horix89/unitree_robot_api`. Endpoints principales:
+La app consume la API REST de [Horix89/unitree_robot_api](https://github.com/Horix89/unitree_robot_api). Rutas definidas en `src/constants/api.js`:
 
 | Método | Endpoint | Descripción |
 |--------|----------|-------------|
-| POST | `/auth/token` | Login |
-| POST | `/auth/register` | Registro |
-| GET | `/status` | Estado del robot |
-| POST | `/connect` | Conectar robot |
-| POST | `/disconnect` | Desconectar robot |
+| POST | `/auth/register` | Registro `{ username, email, password }` |
+| POST | `/auth/token` | Login `{ identifier, password }` → `access_token` |
+| POST | `/connect` | Conectar `{ robot_type, network_interface? }` |
+| POST | `/disconnect` | Desconectar |
+| GET | `/status` | Estado de conexión |
 | POST | `/move` | Mover `{ vx, vy, vyaw }` |
 | POST | `/stop` | Detener |
 | POST | `/standup` | Levantarse |
 | POST | `/sitdown` | Sentarse |
-| GET | `/actions` | Lista de acciones disponibles |
-| POST | `/action/{nombre}` | Ejecutar acción |
+| POST | `/damp` | Modo amortiguado |
+| POST | `/handstand` | Parado de manos `{ enable }` |
+| POST | `/freebound` | Free bound `{ enable }` |
+| POST | `/freeavoid` | Free avoid `{ enable }` |
+| POST | `/walkupright` | Caminar erguido `{ enable }` |
+| POST | `/crossstep` | Paso cruzado `{ enable }` |
+| POST | `/freejump` | Salto libre `{ enable }` |
+| GET | `/actions` | Lista `{ robot_type, actions[] }` |
+| POST | `/action/{action_name}` | Ejecutar acción |
+
+Todos los endpoints de robot requieren header `Authorization: Bearer <token>`.
 
 ## Stack
 

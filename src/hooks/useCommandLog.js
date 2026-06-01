@@ -1,30 +1,21 @@
 import { useCallback } from 'react';
 
-import { postCommand } from '../api/history';
+import { appendCommand } from '../utils/commandHistory';
 
 /**
- * Interfaz única para registrar comandos enviados al robot.
- *
- * Uso:
- *   const { logCommand } = useCommandLog();
- *   await logCommand({ action: 'move_forward', success: true });
- *
- * El shape que se envía al servidor:
- *   { action: string, success: boolean, timestamp: string (ISO 8601) }
+ * Registra comandos enviados al robot en historial local (AsyncStorage).
+ * La API REST no expone endpoint de historial.
  */
 export function useCommandLog() {
   const logCommand = useCallback(async ({ action, success }) => {
-    const entry = {
-      action,
-      success,
-      timestamp: new Date().toISOString(),
-    };
-
     try {
-      await postCommand(entry);
+      await appendCommand({
+        action,
+        success,
+        timestamp: new Date().toISOString(),
+      });
     } catch {
-      // El logging nunca debe cortar el flujo de control del robot.
-      // Si hay error (offline, token vencido, etc.) se ignora silenciosamente.
+      // El logging no debe interrumpir el control del robot.
     }
   }, []);
 

@@ -34,7 +34,6 @@ export default function MovementScreen() {
     setFeedback(null);
     let success = false;
     try {
-      // TODO: connect to API — confirmar payload de movimiento con backend
       await fn();
       success = true;
       setFeedback({ type: 'success', message: `${label}: OK` });
@@ -82,7 +81,7 @@ export default function MovementScreen() {
           <DirectionButton
             direction={DIRECTIONS[0]}
             theme={theme}
-            onPress={() => runCommand(() => robotApi.moveRobot({ vx: 1, vy: 0, vyaw: 0 }), 'Adelante')}
+            onPress={() => runCommand(() => robotApi.moveRobot({ vx: 0.3, vy: 0, vyaw: 0 }), 'Adelante')}
             disabled={loading}
           />
         </View>
@@ -90,14 +89,14 @@ export default function MovementScreen() {
           <DirectionButton
             direction={DIRECTIONS[2]}
             theme={theme}
-            onPress={() => runCommand(() => robotApi.moveRobot({ vx: 0, vy: 0, vyaw: 1 }), 'Izquierda')}
+            onPress={() => runCommand(() => robotApi.moveRobot({ vx: 0, vy: 0, vyaw: 0.5 }), 'Izquierda')}
             disabled={loading}
           />
           <View style={styles.dpadCenter} />
           <DirectionButton
             direction={DIRECTIONS[3]}
             theme={theme}
-            onPress={() => runCommand(() => robotApi.moveRobot({ vx: 0, vy: 0, vyaw: -1 }), 'Derecha')}
+            onPress={() => runCommand(() => robotApi.moveRobot({ vx: 0, vy: 0, vyaw: -0.5 }), 'Derecha')}
             disabled={loading}
           />
         </View>
@@ -105,7 +104,7 @@ export default function MovementScreen() {
           <DirectionButton
             direction={DIRECTIONS[1]}
             theme={theme}
-            onPress={() => runCommand(() => robotApi.moveRobot({ vx: -1, vy: 0, vyaw: 0 }), 'Atrás')}
+            onPress={() => runCommand(() => robotApi.moveRobot({ vx: -0.3, vy: 0, vyaw: 0 }), 'Atrás')}
             disabled={loading}
           />
         </View>

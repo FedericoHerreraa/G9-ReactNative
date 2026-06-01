@@ -1,6 +1,7 @@
 import axios from 'axios';
 
 import { BASE_URL } from '../constants/api';
+import { DEV_AUTH_TOKEN, isDevBypassAuthEnabled } from '../constants/dev';
 import { clearSession, getToken } from '../utils/storage';
 import { navigateToLogin } from '../navigation/navigationRef';
 
@@ -30,9 +31,13 @@ client.interceptors.response.use(
   (response) => response,
   async (error) => {
     if (error.response?.status === 401) {
-      await clearSession();
-      onUnauthorized?.();
-      navigateToLogin();
+      const token = await getToken();
+      const isDevSession = isDevBypassAuthEnabled && token === DEV_AUTH_TOKEN;
+      if (!isDevSession) {
+        await clearSession();
+        onUnauthorized?.();
+        navigateToLogin();
+      }
     }
     // Sin respuesta del servidor = sin conexión o servidor caído
     if (!error.response) {
