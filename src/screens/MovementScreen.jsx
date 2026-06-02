@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -6,13 +7,12 @@ import {
   Text,
   View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 
-import VirtualJoystick from '../components/VirtualJoystick';
 import * as robotApi from '../api/robot';
-import { useCommandLog } from '../hooks/useCommandLog';
+import VirtualJoystick from '../components/VirtualJoystick';
+import { colors, fonts, getRobotTheme, spacing } from '../constants/theme';
 import { useRobot } from '../context/RobotContext';
-import { colors, getRobotTheme, spacing, fonts } from '../constants/theme';
+import { useCommandLog } from '../hooks/useCommandLog';
 
 const DIRECTIONS = [
   { key: 'up', icon: 'arrow-up', label: 'Adelante' },
@@ -21,29 +21,109 @@ const DIRECTIONS = [
   { key: 'right', icon: 'arrow-forward', label: 'Derecha' },
 ];
 
+const DPAD_LINEAR = 0.3; // avance/retroceso
+const DPAD_TURN = 0.5; // giro
+
+const MOVE_THROTTLE_MS = 120;
+
 export default function MovementScreen() {
-  const { isConnected, robotType } = useRobot();
+  const { isConnected, robotType, isDevSimulated } = useRobot();
   const theme = getRobotTheme(robotType);
   const { logCommand } = useCommandLog();
   const [feedback, setFeedback] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  const showSuccess = useCallback((message) => {
+    setFeedback({ type: 'success', message });
+  }, []);
+  const showError = useCallback((message) => {
+    setFeedback({ type: 'error', message });
+  }, []);
+
   const runCommand = async (fn, label) => {
     if (!isConnected) return;
+
+    if (isDevSimulated) {
+      showSuccess(`${label}: OK (simulado)`);
+      logCommand({ action: label, success: true });
+      return;
+    }
+
     setLoading(true);
     setFeedback(null);
     let success = false;
     try {
       await fn();
       success = true;
-      setFeedback({ type: 'success', message: `${label}: OK` });
+      showSuccess(`${label}: OK`);
     } catch {
-      setFeedback({ type: 'error', message: `${label}: falló` });
+      showError(`${label}: falló`);
     } finally {
       setLoading(false);
       logCommand({ action: label, success });
     }
   };
+
+  const lastMoveAt = useRef(0);
+  const sending = useRef(false);
+  const joystickActive = useRef(false);
+
+  const handleJoystickMove = useCallback(
+    (vx, vy, vyaw) => {
+      if (!isConnected) return;
+      joystickActive.current = true;
+
+      if (isDevSimulated) {
+        showSuccess(`Joystick: vx ${vx} · vyaw ${vyaw} (simulado)`);
+        return;
+      }
+
+      const now = Date.now();
+      if (now - lastMoveAt.current < MOVE_THROTTLE_MS) return; // throttle
+      if (sending.current) return; // evita solapar requests en vuelo
+      lastMoveAt.current = now;
+      sending.current = true;
+
+      robotApi
+        .moveRobot({ vx, vy, vyaw })
+        .then(() => {
+          showSuccess(`Joystick: vx ${vx} · vyaw ${vyaw}`);
+        })
+        .catch(() => {
+          showError('Joystick: falló el envío');
+        })
+        .finally(() => {
+          sending.current = false;
+        });
+    },
+    [isConnected, isDevSimulated, showSuccess, showError]
+  );
+
+  const handleJoystickRelease = useCallback(() => {
+    if (!isConnected) return;
+    if (!joystickActive.current) return;
+    joystickActive.current = false;
+
+    if (isDevSimulated) {
+      showSuccess('Joystick: detenido (simulado)');
+      logCommand({ action: 'Joystick move', success: true });
+      return;
+    }
+
+    let success = false;
+    robotApi
+      .stopRobot()
+      .then(() => {
+        success = true;
+        showSuccess('Joystick: detenido');
+      })
+      .catch(() => {
+        showError('Stop: falló');
+      })
+      .finally(() => {
+        logCommand({ action: 'Joystick move', success });
+      });
+  }, [isConnected, isDevSimulated, showSuccess, showError, logCommand]);
 
   const borderColor =
     feedback?.type === 'success'
@@ -81,7 +161,7 @@ export default function MovementScreen() {
           <DirectionButton
             direction={DIRECTIONS[0]}
             theme={theme}
-            onPress={() => runCommand(() => robotApi.moveRobot({ vx: 0.3, vy: 0, vyaw: 0 }), 'Adelante')}
+            onPress={() => runCommand(() => robotApi.moveRobot({ vx: DPAD_LINEAR, vy: 0, vyaw: 0 }), 'Adelante')}
             disabled={loading}
           />
         </View>
@@ -89,14 +169,14 @@ export default function MovementScreen() {
           <DirectionButton
             direction={DIRECTIONS[2]}
             theme={theme}
-            onPress={() => runCommand(() => robotApi.moveRobot({ vx: 0, vy: 0, vyaw: 0.5 }), 'Izquierda')}
+            onPress={() => runCommand(() => robotApi.moveRobot({ vx: 0, vy: 0, vyaw: DPAD_TURN }), 'Izquierda')}
             disabled={loading}
           />
           <View style={styles.dpadCenter} />
           <DirectionButton
             direction={DIRECTIONS[3]}
             theme={theme}
-            onPress={() => runCommand(() => robotApi.moveRobot({ vx: 0, vy: 0, vyaw: -0.5 }), 'Derecha')}
+            onPress={() => runCommand(() => robotApi.moveRobot({ vx: 0, vy: 0, vyaw: -DPAD_TURN }), 'Derecha')}
             disabled={loading}
           />
         </View>
@@ -104,7 +184,7 @@ export default function MovementScreen() {
           <DirectionButton
             direction={DIRECTIONS[1]}
             theme={theme}
-            onPress={() => runCommand(() => robotApi.moveRobot({ vx: -0.3, vy: 0, vyaw: 0 }), 'Atrás')}
+            onPress={() => runCommand(() => robotApi.moveRobot({ vx: -DPAD_LINEAR, vy: 0, vyaw: 0 }), 'Atrás')}
             disabled={loading}
           />
         </View>
@@ -131,7 +211,11 @@ export default function MovementScreen() {
         />
       </View>
 
-      <VirtualJoystick disabled={!isConnected} />
+      <VirtualJoystick
+        disabled={!isConnected}
+        onMove={handleJoystickMove}
+        onRelease={handleJoystickRelease}
+      />
 
       {loading ? (
         <ActivityIndicator style={styles.loader} color={theme.primary} />
