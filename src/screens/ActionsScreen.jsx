@@ -35,7 +35,8 @@ export default function ActionsScreen() {
     } catch (err) {
       // Mock data para desarrollo sin API
       const mockActions = [
-        'Saludar', 'Bailar', 'Sentarse', 'Pararse',
+        'Saludar', 'Bailar', 'Saltar',
+        'Sentarse', 'Pararse',
         'Girar', 'Avanzar', 'Retroceder', 'Handstand',
       ];
       setActions(mockActions);

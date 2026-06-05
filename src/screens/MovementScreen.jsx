@@ -113,6 +113,7 @@ export default function MovementScreen() {
     let success = false;
     robotApi
       .stopRobot()
+      .then(() => robotApi.standUpRobot())
       .then(() => {
         success = true;
         showSuccess('Joystick: detenido');
@@ -194,7 +195,12 @@ export default function MovementScreen() {
         <ActionButton
           label="Detener"
           color={colors.error}
-          onPress={() => runCommand(() => robotApi.stopRobot(), 'Stop')}
+          onPress={() =>
+            runCommand(async () => {
+              await robotApi.stopRobot();
+              await robotApi.standUpRobot();
+            }, 'Stop')
+          }
           disabled={loading}
         />
         <ActionButton
@@ -204,9 +210,9 @@ export default function MovementScreen() {
           disabled={loading}
         />
         <ActionButton
-          label="Sentarse"
+          label="Acostarse"
           color={theme.accent}
-          onPress={() => runCommand(() => robotApi.sitDownRobot(), 'Sit Down')}
+          onPress={() => runCommand(() => robotApi.dampRobot(), 'Lie Down')}
           disabled={loading}
         />
       </View>
