@@ -1,5 +1,6 @@
-import client from './client';
 import { ENDPOINTS } from '../constants/api';
+import { postAction } from './actions';
+import client from './client';
 
 const { connection, motion } = ENDPOINTS;
 
@@ -45,6 +46,11 @@ export async function sitDownRobot() {
 export async function dampRobot() {
   const { data } = await client.post(motion.damp);
   return data;
+}
+
+export async function recoverBalanceRobot() {
+  await postAction('recovery_stand');
+  await postAction('balance_stand');
 }
 
 async function postToggle(endpoint, enable) {

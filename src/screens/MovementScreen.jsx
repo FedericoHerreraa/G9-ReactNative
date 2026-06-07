@@ -27,7 +27,8 @@ const DPAD_TURN = 0.5; // giro
 const MOVE_THROTTLE_MS = 120;
 
 export default function MovementScreen() {
-  const { isConnected, robotType, isDevSimulated } = useRobot();
+  const { isConnected, robotType, isDevSimulated, isSeated, markRobotSeated, markRobotStanding } =
+    useRobot();
   const theme = getRobotTheme(robotType);
   const { logCommand } = useCommandLog();
   const [feedback, setFeedback] = useState(null);
@@ -39,6 +40,20 @@ export default function MovementScreen() {
   const showError = useCallback((message) => {
     setFeedback({ type: 'error', message });
   }, []);
+
+  const ensureReadyToMove = useCallback(async () => {
+    if (!isSeated) return;
+    await robotApi.recoverBalanceRobot();
+    markRobotStanding();
+  }, [isSeated, markRobotStanding]);
+
+  const moveRobotReady = useCallback(
+    async (params) => {
+      await ensureReadyToMove();
+      await robotApi.moveRobot(params);
+    },
+    [ensureReadyToMove]
+  );
 
   const runCommand = async (fn, label) => {
     if (!isConnected) return;
@@ -84,8 +99,7 @@ export default function MovementScreen() {
       lastMoveAt.current = now;
       sending.current = true;
 
-      robotApi
-        .moveRobot({ vx, vy, vyaw })
+      moveRobotReady({ vx, vy, vyaw })
         .then(() => {
           showSuccess(`Joystick: vx ${vx} · vyaw ${vyaw}`);
         })
@@ -96,7 +110,7 @@ export default function MovementScreen() {
           sending.current = false;
         });
     },
-    [isConnected, isDevSimulated, showSuccess, showError]
+    [isConnected, isDevSimulated, showSuccess, showError, moveRobotReady]
   );
 
   const handleJoystickRelease = useCallback(() => {
@@ -162,7 +176,7 @@ export default function MovementScreen() {
           <DirectionButton
             direction={DIRECTIONS[0]}
             theme={theme}
-            onPress={() => runCommand(() => robotApi.moveRobot({ vx: DPAD_LINEAR, vy: 0, vyaw: 0 }), 'Adelante')}
+            onPress={() => runCommand(() => moveRobotReady({ vx: DPAD_LINEAR, vy: 0, vyaw: 0 }), 'Adelante')}
             disabled={loading}
           />
         </View>
@@ -170,14 +184,14 @@ export default function MovementScreen() {
           <DirectionButton
             direction={DIRECTIONS[2]}
             theme={theme}
-            onPress={() => runCommand(() => robotApi.moveRobot({ vx: 0, vy: 0, vyaw: DPAD_TURN }), 'Izquierda')}
+            onPress={() => runCommand(() => moveRobotReady({ vx: 0, vy: 0, vyaw: DPAD_TURN }), 'Izquierda')}
             disabled={loading}
           />
           <View style={styles.dpadCenter} />
           <DirectionButton
             direction={DIRECTIONS[3]}
             theme={theme}
-            onPress={() => runCommand(() => robotApi.moveRobot({ vx: 0, vy: 0, vyaw: -DPAD_TURN }), 'Derecha')}
+            onPress={() => runCommand(() => moveRobotReady({ vx: 0, vy: 0, vyaw: -DPAD_TURN }), 'Derecha')}
             disabled={loading}
           />
         </View>
@@ -185,7 +199,7 @@ export default function MovementScreen() {
           <DirectionButton
             direction={DIRECTIONS[1]}
             theme={theme}
-            onPress={() => runCommand(() => robotApi.moveRobot({ vx: -DPAD_LINEAR, vy: 0, vyaw: 0 }), 'Atrás')}
+            onPress={() => runCommand(() => moveRobotReady({ vx: -DPAD_LINEAR, vy: 0, vyaw: 0 }), 'Atrás')}
             disabled={loading}
           />
         </View>
@@ -206,13 +220,23 @@ export default function MovementScreen() {
         <ActionButton
           label="Levantarse"
           color={theme.primary}
-          onPress={() => runCommand(() => robotApi.standUpRobot(), 'Stand Up')}
+          onPress={() =>
+            runCommand(async () => {
+              await robotApi.recoverBalanceRobot();
+              markRobotStanding();
+            }, 'Stand Up')
+          }
           disabled={loading}
         />
         <ActionButton
-          label="Acostarse"
+          label="Sentarse"
           color={theme.accent}
-          onPress={() => runCommand(() => robotApi.dampRobot(), 'Lie Down')}
+          onPress={() =>
+            runCommand(async () => {
+              await robotApi.sitDownRobot();
+              markRobotSeated();
+            }, 'Sit Down')
+          }
           disabled={loading}
         />
       </View>

@@ -16,7 +16,7 @@ import AppCard from '../components/AppCard';
 import ScreenContainer from '../components/ScreenContainer';
 
 export default function ActionsScreen() {
-  const { isConnected, robotType } = useRobot();
+  const { isConnected, robotType, markRobotSeated } = useRobot();
   const theme = getRobotTheme(robotType);
   const { logCommand } = useCommandLog();
   const [actions, setActions] = useState([]);
@@ -59,6 +59,9 @@ export default function ActionsScreen() {
     try {
       await actionsApi.postAction(action);
       actionSuccess = true;
+      if (/sent/i.test(action) || /sitdown/i.test(action)) {
+        markRobotSeated();
+      }
       setSuccess(`✓ "${action}" ejecutado correctamente.`);
     } catch (err) {
       setError(err.response?.data?.message ?? 'Error al ejecutar la acción.');
