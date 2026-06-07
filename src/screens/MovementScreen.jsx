@@ -27,8 +27,7 @@ const DPAD_TURN = 0.5; // giro
 const MOVE_THROTTLE_MS = 120;
 
 export default function MovementScreen() {
-  const { isConnected, robotType, isDevSimulated, isSeated, markRobotSeated, markRobotStanding } =
-    useRobot();
+  const { isConnected, robotType, isDevSimulated, isSeated, markRobotStanding } = useRobot();
   const theme = getRobotTheme(robotType);
   const { logCommand } = useCommandLog();
   const [feedback, setFeedback] = useState(null);
@@ -56,7 +55,13 @@ export default function MovementScreen() {
   );
 
   const runCommand = async (fn, label) => {
-    if (!isConnected) return;
+    if (!isConnected) {
+      setFeedback({
+        type: 'warning',
+        message: 'Conectá el robot desde la pestaña Conexión para usar los controles.',
+      });
+      return;
+    }
 
     if (isDevSimulated) {
       showSuccess(`${label}: OK (simulado)`);
@@ -145,31 +150,37 @@ export default function MovementScreen() {
       ? colors.success
       : feedback?.type === 'error'
         ? colors.error
-        : colors.border;
+        : feedback?.type === 'warning'
+          ? colors.warning
+          : colors.border;
 
-  if (!isConnected) {
-    return (
-      <View style={styles.disabledContainer}>
-        <Ionicons name="lock-closed-outline" size={48} color={colors.textMuted} />
-        <Text style={styles.disabledTitle}>Movimiento deshabilitado</Text>
-        <Text style={styles.disabledText}>
-          Conectá el robot desde la pestaña Conexión para habilitar los controles.
-        </Text>
-      </View>
-    );
-  }
+  const controlsInactive = !isConnected;
+  const controlsDisabled = loading;
 
   return (
     <View style={[styles.container, { borderColor }]}>
-      {feedback ? (
-        <Text
-          style={[
-            styles.feedback,
-            feedback.type === 'success' ? styles.feedbackSuccess : styles.feedbackError,
-          ]}>
-          {feedback.message}
-        </Text>
-      ) : null}
+      <View style={styles.topSection}>
+        {!isConnected ? (
+          <View style={styles.disconnectedBanner}>
+            <Ionicons name="information-circle-outline" size={18} color={colors.warning} />
+            <Text style={styles.disconnectedBannerText}>
+              Vista previa — conectá el robot en Conexión para enviar comandos.
+            </Text>
+          </View>
+        ) : null}
+
+        {feedback ? (
+          <Text
+            style={[
+              styles.feedback,
+              feedback.type === 'success' && styles.feedbackSuccess,
+              feedback.type === 'error' && styles.feedbackError,
+              feedback.type === 'warning' && styles.feedbackWarning,
+            ]}>
+            {feedback.message}
+          </Text>
+        ) : null}
+      </View>
 
       <View style={styles.dpad}>
         <View style={styles.dpadRow}>
@@ -177,7 +188,8 @@ export default function MovementScreen() {
             direction={DIRECTIONS[0]}
             theme={theme}
             onPress={() => runCommand(() => moveRobotReady({ vx: DPAD_LINEAR, vy: 0, vyaw: 0 }), 'Adelante')}
-            disabled={loading}
+            disabled={controlsDisabled}
+            inactive={controlsInactive}
           />
         </View>
         <View style={styles.dpadRow}>
@@ -185,14 +197,16 @@ export default function MovementScreen() {
             direction={DIRECTIONS[2]}
             theme={theme}
             onPress={() => runCommand(() => moveRobotReady({ vx: 0, vy: 0, vyaw: DPAD_TURN }), 'Izquierda')}
-            disabled={loading}
+            disabled={controlsDisabled}
+            inactive={controlsInactive}
           />
           <View style={styles.dpadCenter} />
           <DirectionButton
             direction={DIRECTIONS[3]}
             theme={theme}
             onPress={() => runCommand(() => moveRobotReady({ vx: 0, vy: 0, vyaw: -DPAD_TURN }), 'Derecha')}
-            disabled={loading}
+            disabled={controlsDisabled}
+            inactive={controlsInactive}
           />
         </View>
         <View style={styles.dpadRow}>
@@ -200,52 +214,19 @@ export default function MovementScreen() {
             direction={DIRECTIONS[1]}
             theme={theme}
             onPress={() => runCommand(() => moveRobotReady({ vx: -DPAD_LINEAR, vy: 0, vyaw: 0 }), 'Atrás')}
-            disabled={loading}
+            disabled={controlsDisabled}
+            inactive={controlsInactive}
           />
         </View>
       </View>
 
-      <View style={styles.specialActions}>
-        <ActionButton
-          label="Detener"
-          color={colors.error}
-          onPress={() =>
-            runCommand(async () => {
-              await robotApi.stopRobot();
-              await robotApi.standUpRobot();
-            }, 'Stop')
-          }
-          disabled={loading}
-        />
-        <ActionButton
-          label="Levantarse"
-          color={theme.primary}
-          onPress={() =>
-            runCommand(async () => {
-              await robotApi.recoverBalanceRobot();
-              markRobotStanding();
-            }, 'Stand Up')
-          }
-          disabled={loading}
-        />
-        <ActionButton
-          label="Sentarse"
-          color={theme.accent}
-          onPress={() =>
-            runCommand(async () => {
-              await robotApi.sitDownRobot();
-              markRobotSeated();
-            }, 'Sit Down')
-          }
-          disabled={loading}
+      <View style={styles.joystickSection}>
+        <VirtualJoystick
+          disabled={controlsInactive || controlsDisabled}
+          onMove={handleJoystickMove}
+          onRelease={handleJoystickRelease}
         />
       </View>
-
-      <VirtualJoystick
-        disabled={!isConnected}
-        onMove={handleJoystickMove}
-        onRelease={handleJoystickRelease}
-      />
 
       {loading ? (
         <ActivityIndicator style={styles.loader} color={theme.primary} />
@@ -254,24 +235,13 @@ export default function MovementScreen() {
   );
 }
 
-function DirectionButton({ direction, theme, onPress, disabled }) {
+function DirectionButton({ direction, theme, onPress, disabled, inactive = false }) {
   return (
     <Pressable
-      style={[styles.dirButton, { borderColor: theme.primary }]}
+      style={[styles.dirButton, { borderColor: theme.primary }, inactive && styles.controlDisabled]}
       onPress={onPress}
       disabled={disabled}>
       <Ionicons name={direction.icon} size={28} color={theme.primary} />
-    </Pressable>
-  );
-}
-
-function ActionButton({ label, color, onPress, disabled }) {
-  return (
-    <Pressable
-      style={[styles.actionButton, { backgroundColor: color }]}
-      onPress={onPress}
-      disabled={disabled}>
-      <Text style={styles.actionButtonText}>{label}</Text>
     </Pressable>
   );
 }
@@ -280,10 +250,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: spacing.lg,
+    paddingBottom: spacing.xl,
     backgroundColor: colors.background,
     borderWidth: 2,
     borderRadius: 4,
-    gap: spacing.lg,
+  },
+  topSection: {
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
   },
   disabledContainer: {
     flex: 1,
@@ -292,6 +266,24 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     backgroundColor: colors.background,
     gap: spacing.md,
+  },
+  disconnectedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    padding: spacing.sm,
+    borderRadius: 8,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.warning,
+  },
+  disconnectedBannerText: {
+    flex: 1,
+    color: colors.textMuted,
+    fontSize: fonts.sizes.sm,
+  },
+  controlDisabled: {
+    opacity: 0.45,
   },
   disabledTitle: {
     color: colors.text,
@@ -313,9 +305,13 @@ const styles = StyleSheet.create({
   feedbackError: {
     color: colors.error,
   },
+  feedbackWarning: {
+    color: colors.warning,
+  },
   dpad: {
     alignItems: 'center',
     gap: spacing.sm,
+    marginBottom: spacing.xl,
   },
   dpadRow: {
     flexDirection: 'row',
@@ -335,22 +331,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.surface,
   },
-  specialActions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
+  joystickSection: {
+    flex: 1,
     justifyContent: 'center',
-  },
-  actionButton: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: 10,
-    minWidth: 100,
     alignItems: 'center',
-  },
-  actionButtonText: {
-    color: colors.white,
-    fontWeight: '700',
+    minHeight: 220,
   },
   loader: {
     marginTop: spacing.sm,

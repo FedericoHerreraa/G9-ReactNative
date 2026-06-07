@@ -64,6 +64,8 @@ export default function VirtualJoystick({ disabled = false, onMove, onRelease })
       PanResponder.create({
         onStartShouldSetPanResponder: () => !disabled,
         onMoveShouldSetPanResponder: () => !disabled,
+        onStartShouldSetPanResponderCapture: () => !disabled,
+        onMoveShouldSetPanResponderCapture: () => !disabled,
         onPanResponderMove: (_evt, gestureState) => {
           const pos = clampToCircle(gestureState.dx, gestureState.dy);
           pan.setValue(pos);
@@ -89,7 +91,7 @@ export default function VirtualJoystick({ disabled = false, onMove, onRelease })
         />
       </View>
       <Text style={styles.hint}>
-        {disabled ? 'Conectá el robot para usar el joystick' : 'Arrastrá para conducir'}
+        {disabled ? 'Vista previa — conectá el robot para conducir' : 'Arrastrá para conducir'}
       </Text>
     </View>
   );
@@ -98,7 +100,8 @@ export default function VirtualJoystick({ disabled = false, onMove, onRelease })
 const styles = StyleSheet.create({
   wrapper: {
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: spacing.md,
+    width: '100%',
   },
   base: {
     width: BASE_SIZE,
