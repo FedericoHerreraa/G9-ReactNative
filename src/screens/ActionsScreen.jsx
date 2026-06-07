@@ -64,7 +64,7 @@ export default function ActionsScreen() {
       setError(err.response?.data?.message ?? 'Error al ejecutar la acción.');
     } finally {
       setLoadingAction(null);
-      logCommand({ action, success: actionSuccess });
+      logCommand(`action/${action}`, actionSuccess);
     }
   };
 

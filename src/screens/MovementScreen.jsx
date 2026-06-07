@@ -40,28 +40,40 @@ export default function MovementScreen() {
     setFeedback({ type: 'error', message });
   }, []);
 
-  const runCommand = async (fn, label) => {
+  const runApiCall = useCallback(
+    async (fn, command) => {
+      let success = false;
+      try {
+        await fn();
+        success = true;
+        return true;
+      } catch {
+        return false;
+      } finally {
+        logCommand(command, success);
+      }
+    },
+    [logCommand]
+  );
+
+  const runCommand = async (fn, { label, command }) => {
     if (!isConnected) return;
 
     if (isDevSimulated) {
       showSuccess(`${label}: OK (simulado)`);
-      logCommand({ action: label, success: true });
+      logCommand(command, true);
       return;
     }
 
     setLoading(true);
     setFeedback(null);
-    let success = false;
-    try {
-      await fn();
-      success = true;
+    const success = await runApiCall(fn, command);
+    if (success) {
       showSuccess(`${label}: OK`);
-    } catch {
+    } else {
       showError(`${label}: falló`);
-    } finally {
-      setLoading(false);
-      logCommand({ action: label, success });
     }
+    setLoading(false);
   };
 
   const lastMoveAt = useRef(0);
@@ -79,8 +91,8 @@ export default function MovementScreen() {
       }
 
       const now = Date.now();
-      if (now - lastMoveAt.current < MOVE_THROTTLE_MS) return; // throttle
-      if (sending.current) return; // evita solapar requests en vuelo
+      if (now - lastMoveAt.current < MOVE_THROTTLE_MS) return;
+      if (sending.current) return;
       lastMoveAt.current = now;
       sending.current = true;
 
@@ -88,43 +100,73 @@ export default function MovementScreen() {
         .moveRobot({ vx, vy, vyaw })
         .then(() => {
           showSuccess(`Joystick: vx ${vx} · vyaw ${vyaw}`);
+          logCommand('move', true);
         })
         .catch(() => {
           showError('Joystick: falló el envío');
+          logCommand('move', false);
         })
         .finally(() => {
           sending.current = false;
         });
     },
-    [isConnected, isDevSimulated, showSuccess, showError]
+    [isConnected, isDevSimulated, showSuccess, showError, logCommand]
   );
 
-  const handleJoystickRelease = useCallback(() => {
+  const handleJoystickRelease = useCallback(async () => {
     if (!isConnected) return;
     if (!joystickActive.current) return;
     joystickActive.current = false;
 
     if (isDevSimulated) {
       showSuccess('Joystick: detenido (simulado)');
-      logCommand({ action: 'Joystick move', success: true });
+      logCommand('stop', true);
+      logCommand('standup', true);
       return;
     }
 
-    let success = false;
-    robotApi
-      .stopRobot()
-      .then(() => robotApi.standUpRobot())
-      .then(() => {
-        success = true;
-        showSuccess('Joystick: detenido');
-      })
-      .catch(() => {
-        showError('Stop: falló');
-      })
-      .finally(() => {
-        logCommand({ action: 'Joystick move', success });
-      });
-  }, [isConnected, isDevSimulated, showSuccess, showError, logCommand]);
+    setFeedback(null);
+    const stopOk = await runApiCall(() => robotApi.stopRobot(), 'stop');
+    if (!stopOk) {
+      showError('Stop: falló');
+      return;
+    }
+
+    const standOk = await runApiCall(() => robotApi.standUpRobot(), 'standup');
+    if (standOk) {
+      showSuccess('Joystick: detenido');
+    } else {
+      showError('Standup: falló');
+    }
+  }, [isConnected, isDevSimulated, showSuccess, showError, logCommand, runApiCall]);
+
+  const handleStop = async () => {
+    if (!isConnected) return;
+
+    if (isDevSimulated) {
+      showSuccess('Stop: OK (simulado)');
+      logCommand('stop', true);
+      logCommand('standup', true);
+      return;
+    }
+
+    setLoading(true);
+    setFeedback(null);
+    const stopOk = await runApiCall(() => robotApi.stopRobot(), 'stop');
+    if (!stopOk) {
+      showError('Stop: falló');
+      setLoading(false);
+      return;
+    }
+
+    const standOk = await runApiCall(() => robotApi.standUpRobot(), 'standup');
+    if (standOk) {
+      showSuccess('Stop: OK');
+    } else {
+      showError('Standup: falló');
+    }
+    setLoading(false);
+  };
 
   const borderColor =
     feedback?.type === 'success'
@@ -162,7 +204,12 @@ export default function MovementScreen() {
           <DirectionButton
             direction={DIRECTIONS[0]}
             theme={theme}
-            onPress={() => runCommand(() => robotApi.moveRobot({ vx: DPAD_LINEAR, vy: 0, vyaw: 0 }), 'Adelante')}
+            onPress={() =>
+              runCommand(() => robotApi.moveRobot({ vx: DPAD_LINEAR, vy: 0, vyaw: 0 }), {
+                label: 'Adelante',
+                command: 'move',
+              })
+            }
             disabled={loading}
           />
         </View>
@@ -170,14 +217,24 @@ export default function MovementScreen() {
           <DirectionButton
             direction={DIRECTIONS[2]}
             theme={theme}
-            onPress={() => runCommand(() => robotApi.moveRobot({ vx: 0, vy: 0, vyaw: DPAD_TURN }), 'Izquierda')}
+            onPress={() =>
+              runCommand(() => robotApi.moveRobot({ vx: 0, vy: 0, vyaw: DPAD_TURN }), {
+                label: 'Izquierda',
+                command: 'move',
+              })
+            }
             disabled={loading}
           />
           <View style={styles.dpadCenter} />
           <DirectionButton
             direction={DIRECTIONS[3]}
             theme={theme}
-            onPress={() => runCommand(() => robotApi.moveRobot({ vx: 0, vy: 0, vyaw: -DPAD_TURN }), 'Derecha')}
+            onPress={() =>
+              runCommand(() => robotApi.moveRobot({ vx: 0, vy: 0, vyaw: -DPAD_TURN }), {
+                label: 'Derecha',
+                command: 'move',
+              })
+            }
             disabled={loading}
           />
         </View>
@@ -185,34 +242,29 @@ export default function MovementScreen() {
           <DirectionButton
             direction={DIRECTIONS[1]}
             theme={theme}
-            onPress={() => runCommand(() => robotApi.moveRobot({ vx: -DPAD_LINEAR, vy: 0, vyaw: 0 }), 'Atrás')}
+            onPress={() =>
+              runCommand(() => robotApi.moveRobot({ vx: -DPAD_LINEAR, vy: 0, vyaw: 0 }), {
+                label: 'Atrás',
+                command: 'move',
+              })
+            }
             disabled={loading}
           />
         </View>
       </View>
 
       <View style={styles.specialActions}>
-        <ActionButton
-          label="Detener"
-          color={colors.error}
-          onPress={() =>
-            runCommand(async () => {
-              await robotApi.stopRobot();
-              await robotApi.standUpRobot();
-            }, 'Stop')
-          }
-          disabled={loading}
-        />
+        <ActionButton label="Detener" color={colors.error} onPress={handleStop} disabled={loading} />
         <ActionButton
           label="Levantarse"
           color={theme.primary}
-          onPress={() => runCommand(() => robotApi.standUpRobot(), 'Stand Up')}
+          onPress={() => runCommand(() => robotApi.standUpRobot(), { label: 'Stand Up', command: 'standup' })}
           disabled={loading}
         />
         <ActionButton
           label="Acostarse"
           color={theme.accent}
-          onPress={() => runCommand(() => robotApi.dampRobot(), 'Lie Down')}
+          onPress={() => runCommand(() => robotApi.dampRobot(), { label: 'Lie Down', command: 'damp' })}
           disabled={loading}
         />
       </View>

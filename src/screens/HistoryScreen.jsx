@@ -1,7 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
-  ActivityIndicator,
   FlatList,
   RefreshControl,
   StyleSheet,
@@ -10,65 +9,45 @@ import {
 } from 'react-native';
 
 import CommandHistoryItem from '../components/CommandHistoryItem';
-import * as historyApi from '../api/history';
+import { useAuth } from '../context/AuthContext';
 import { useRobot } from '../context/RobotContext';
-import { colors, getRobotTheme, spacing, fonts } from '../constants/theme';
-
-function normalizeHistoryList(data) {
-  if (Array.isArray(data)) return data;
-  return data?.items ?? [];
-}
+import { getCommandHistory, resolveUserId } from '../utils/commandHistory';
+import { colors, getRobotTheme, spacing } from '../constants/theme';
 
 export default function HistoryScreen() {
+  const { user } = useAuth();
   const { robotType } = useRobot();
   const theme = getRobotTheme(robotType);
+  const userId = resolveUserId(user);
   const [history, setHistory] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState('');
 
   const loadHistory = useCallback(async () => {
-    setError('');
     try {
-      const data = await historyApi.getHistory();
-      setHistory(normalizeHistoryList(data));
-    } catch (err) {
+      const data = await getCommandHistory(userId);
+      setHistory(data);
+    } catch {
       setHistory([]);
-      setError(err.response?.data?.message ?? 'No se pudo cargar el historial.');
     }
-  }, []);
+  }, [userId]);
 
   useFocusEffect(
     useCallback(() => {
-      let active = true;
-      (async () => {
-        setLoading(true);
-        await loadHistory();
-        if (active) setLoading(false);
-      })();
-      return () => {
-        active = false;
-      };
+      loadHistory();
     }, [loadHistory])
   );
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadHistory();
-    setRefreshing(false);
+    try {
+      await loadHistory();
+    } finally {
+      setRefreshing(false);
+    }
   };
-
-  if (loading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color={theme.primary} />
-      </View>
-    );
-  }
 
   return (
     <View style={styles.container}>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
       <FlatList
         data={history}
         keyExtractor={(item, index) => String(item.id ?? index)}
@@ -78,7 +57,11 @@ export default function HistoryScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
         }
         ListEmptyComponent={
-          <Text style={styles.empty}>El historial de comandos aparecerá aquí.</Text>
+          <Text style={styles.empty}>
+            {userId
+              ? 'El historial de comandos aparecerá aquí.'
+              : 'Iniciá sesión para ver tu historial de comandos.'}
+          </Text>
         }
       />
     </View>
@@ -90,19 +73,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.background,
-  },
-  error: {
-    color: colors.error,
-    padding: spacing.md,
-    fontSize: fonts.sizes.md,
-  },
   list: {
     padding: spacing.md,
+    flexGrow: 1,
   },
   empty: {
     color: colors.textMuted,

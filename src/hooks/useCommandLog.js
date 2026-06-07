@@ -1,20 +1,22 @@
 import { useCallback } from 'react';
 
-import { postCommand } from '../api/history';
-
+import { useAuth } from '../context/AuthContext';
+import { resolveUserId, saveCommand } from '../utils/commandHistory';
 
 export function useCommandLog() {
-  const logCommand = useCallback(async ({ action, success }) => {
-    try {
-      await postCommand({
-        action,
-        success,
-        timestamp: new Date().toISOString(),
-      });
-    } catch {
-      // El logging no debe interrumpir el control del robot.
-    }
-  }, []);
+  const { user } = useAuth();
+  const userId = resolveUserId(user);
+
+  const logCommand = useCallback(
+    async (command, success) => {
+      try {
+        await saveCommand(userId, command, success);
+      } catch {
+        // El logging no debe interrumpir el control del robot.
+      }
+    },
+    [userId]
+  );
 
   return { logCommand };
 }

@@ -29,8 +29,4 @@ export const ENDPOINTS = {
     list: '/actions',
     execute: (name) => `/action/${name}`,
   },
-  history: {
-    list: '/history',
-    create: '/history',
-  },
 };
