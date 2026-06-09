@@ -24,6 +24,7 @@ export function RobotProvider({ children }) {
   const [networkInterface, setNetworkInterface] = useState('eth0');
   const [statusData, setStatusData] = useState(null);
   const [isDevSimulated, setIsDevSimulated] = useState(false);
+  const [isSeated, setIsSeated] = useState(false);
 
   const wantsConnectionRef = useRef(false);
   const reconnectingRef = useRef(false);
@@ -128,12 +129,16 @@ export function RobotProvider({ children }) {
       setIsConnected(false);
       setConnectionStatus('disconnected');
       setStatusData(null);
+      setIsSeated(false);
     }
   }, [isDevSimulated]);
 
   const refreshStatus = useCallback(async () => {
     return fetchStatus();
   }, [fetchStatus]);
+
+  const markRobotSeated = useCallback(() => setIsSeated(true), []);
+  const markRobotStanding = useCallback(() => setIsSeated(false), []);
 
   const simulateDevConnection = useCallback(() => {
     if (!isDevBypassAuthEnabled) return;
@@ -169,6 +174,9 @@ export function RobotProvider({ children }) {
       simulateDevConnection,
       isDevBypassAuthEnabled,
       isDevSimulated,
+      isSeated,
+      markRobotSeated,
+      markRobotStanding,
     }),
     [
       robotType,
@@ -182,6 +190,9 @@ export function RobotProvider({ children }) {
       fetchStatus,
       simulateDevConnection,
       isDevSimulated,
+      isSeated,
+      markRobotSeated,
+      markRobotStanding,
     ]
   );
 
