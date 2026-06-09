@@ -262,9 +262,9 @@ export default function MovementScreen() {
           disabled={loading}
         />
         <ActionButton
-          label="Acostarse"
+          label="Sentarse"
           color={theme.accent}
-          onPress={() => runCommand(() => robotApi.dampRobot(), { label: 'Lie Down', command: 'damp' })}
+          onPress={() => runCommand(() => robotApi.sitDownRobot(), { label: 'Sit Down', command: 'sitdown' })}
           disabled={loading}
         />
       </View>
