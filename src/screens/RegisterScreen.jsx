@@ -63,10 +63,11 @@ export default function RegisterScreen({ navigation }) {
 
     setSubmitting(true);
     try {
-      await authApi.register(username.trim(), email.trim(), password);
+await authApi.register(username.trim(), email.trim(), password);
       setSuccess('Cuenta creada. Ya podés iniciar sesión.');
       setTimeout(() => navigation.navigate('Login'), 1500);
     } catch (err) {
+      console.error('[Register] full error:', JSON.stringify({ message: err?.message, code: err?.code, status: err?.response?.status, data: err?.response?.data, config_url: err?.config?.url, config_baseURL: err?.config?.baseURL }));
       const status = err.response?.status;
       const serverMsg =
         (err.response?.data?.message ?? err.response?.data?.detail ?? '').toLowerCase();
@@ -85,7 +86,7 @@ export default function RegisterScreen({ navigation }) {
           setError('El email o nombre de usuario ya está en uso.');
         }
       } else if (!err.response) {
-        setError('Sin conexión. Verificá tu red o que el servidor esté disponible.');
+        setError(`Sin conexión: ${err?.message ?? err?.code ?? 'error desconocido'}`);
       } else {
         setError(
           err.response?.data?.message ??
