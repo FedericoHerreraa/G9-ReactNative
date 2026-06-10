@@ -7,8 +7,8 @@ const BASE_SIZE = 200;
 const KNOB_SIZE = 72;
 const MAX_RADIUS = (BASE_SIZE - KNOB_SIZE) / 2; 
 
-const MAX_VX = 0.6; // avance/retroceso — eje vertical
-const MAX_VYAW = 1.0; // giro — eje horizontal
+const MAX_VX = 0.5; // avance/retroceso — eje vertical
+const MAX_VYAW = 0.5; // giro — eje horizontal
 const DEAD_ZONE = 0.08; 
 const MIN_DELTA = 0.03; 
 

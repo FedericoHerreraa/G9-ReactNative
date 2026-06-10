@@ -21,7 +21,6 @@ export function RobotProvider({ children }) {
   const [robotType, setRobotType] = useState(ROBOT_TYPES.GO2);
   const [isConnected, setIsConnected] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
-  const [networkInterface, setNetworkInterface] = useState('eth0');
   const [statusData, setStatusData] = useState(null);
   const [isDevSimulated, setIsDevSimulated] = useState(false);
   const [isSeated, setIsSeated] = useState(false);
@@ -38,9 +37,6 @@ export function RobotProvider({ children }) {
     if (data.robot_type) {
       setRobotType(data.robot_type);
     }
-    if (data.network_interface) {
-      setNetworkInterface(data.network_interface);
-    }
   }, []);
 
   const attemptReconnect = useCallback(async () => {
@@ -51,10 +47,7 @@ export function RobotProvider({ children }) {
     reconnectingRef.current = true;
     setConnectionStatus('connecting');
     try {
-      const data = await robotApi.connectRobot({
-        robot_type: robotType,
-        network_interface: networkInterface || undefined,
-      });
+      const data = await robotApi.connectRobot({ robot_type: robotType });
       setIsConnected(true);
       setConnectionStatus('connected');
       setStatusData(data);
@@ -66,7 +59,7 @@ export function RobotProvider({ children }) {
     } finally {
       reconnectingRef.current = false;
     }
-  }, [robotType, networkInterface]);
+  }, [robotType]);
 
   const fetchStatus = useCallback(async () => {
     const data = await robotApi.getRobotStatus();
@@ -99,10 +92,7 @@ export function RobotProvider({ children }) {
     setIsDevSimulated(false);
     setConnectionStatus('connecting');
     try {
-      const data = await robotApi.connectRobot({
-        robot_type: robotType,
-        network_interface: networkInterface || undefined,
-      });
+      const data = await robotApi.connectRobot({ robot_type: robotType });
       setIsConnected(true);
       setConnectionStatus('connected');
       setStatusData(data);
@@ -112,7 +102,7 @@ export function RobotProvider({ children }) {
       setConnectionStatus('error');
       throw err;
     }
-  }, [robotType, networkInterface]);
+  }, [robotType]);
 
   const disconnectRobot = useCallback(async () => {
     wantsConnectionRef.current = false;
@@ -149,12 +139,11 @@ export function RobotProvider({ children }) {
     setStatusData({
       connection_state: 'connected',
       robot_type: robotType,
-      network_interface: networkInterface,
       connected_at: new Date().toISOString(),
       last_error: null,
       _dev_mock: true,
     });
-  }, [robotType, networkInterface]);
+  }, [robotType]);
 
   const value = useMemo(
     () => ({
@@ -163,8 +152,6 @@ export function RobotProvider({ children }) {
       isConnected,
       connectionStatus,
       setConnectionStatus,
-      networkInterface,
-      setNetworkInterface,
       statusData,
       setStatusData,
       connectRobot,
@@ -182,7 +169,6 @@ export function RobotProvider({ children }) {
       robotType,
       isConnected,
       connectionStatus,
-      networkInterface,
       statusData,
       connectRobot,
       disconnectRobot,
