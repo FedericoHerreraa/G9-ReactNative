@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 
 import * as actionsApi from '../api/actions';
+import { freeJumpRobot } from '../api/robot';
 import { useCommandLog } from '../hooks/useCommandLog';
 import { useRobot } from '../context/RobotContext';
 import { colors, getRobotTheme, spacing, fonts } from '../constants/theme';
@@ -30,14 +31,15 @@ export default function ActionsScreen() {
     setError('');
     try {
       const data = await actionsApi.getActions();
+      console.log('[ActionsScreen] GET /actions response:', JSON.stringify(data));
       const list = Array.isArray(data) ? data : (data.actions ?? []);
       setActions(list);
-    } catch (err) {
+    } catch (_err) {
       // Mock data para desarrollo sin API
       const mockActions = [
-        'Saludar', 'Bailar', 'Saltar',
-        'Sentarse', 'Pararse',
-        'Girar', 'Avanzar', 'Retroceder', 'Handstand',
+        'hello', 'stretch', 'dance1', 'dance2', 'heart',
+        'left_flip', 'back_flip', 'front_flip',
+        'balance_stand', 'recovery_stand', 'free_walk',
       ];
       setActions(mockActions);
       setError('');
@@ -49,6 +51,24 @@ export default function ActionsScreen() {
   useEffect(() => {
     loadActions();
   }, [loadActions]);
+
+  const handleJump = async () => {
+    if (!isConnected) return;
+    setLoadingAction('freejump');
+    setError('');
+    setSuccess('');
+    let actionSuccess = false;
+    try {
+      await freeJumpRobot(true);
+      actionSuccess = true;
+      setSuccess('✓ "Saltar" ejecutado correctamente.');
+    } catch (err) {
+      setError(err.response?.data?.detail ?? err.response?.data?.message ?? 'Error al ejecutar el salto.');
+    } finally {
+      setLoadingAction(null);
+      logCommand('freejump', actionSuccess);
+    }
+  };
 
   const handleExecute = async (action) => {
     if (!isConnected) return;
@@ -86,6 +106,17 @@ export default function ActionsScreen() {
       )}
       {error ? <Text style={styles.error}>{error}</Text> : null}
       {success ? <Text style={styles.success}>{success}</Text> : null}
+
+      <AppCard style={styles.jumpCard}>
+        <Text style={styles.cardTitle}>Saltar</Text>
+        <AppButton
+          title="Ejecutar"
+          onPress={handleJump}
+          disabled={!isConnected}
+          loading={loadingAction === 'freejump'}
+          theme={theme}
+        />
+      </AppCard>
 
       <FlatList
         data={actions}
@@ -146,6 +177,11 @@ const styles = StyleSheet.create({
   },
   actionCard: {
     flex: 1,
+    gap: spacing.sm,
+  },
+  jumpCard: {
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.sm,
     gap: spacing.sm,
   },
   cardTitle: {

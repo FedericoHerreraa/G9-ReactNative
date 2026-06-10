@@ -5,7 +5,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 
@@ -20,8 +19,6 @@ export default function ConnectionScreen() {
     setRobotType,
     isConnected,
     connectionStatus,
-    networkInterface,
-    setNetworkInterface,
     statusData,
     connectRobot,
     disconnectRobot,
@@ -72,16 +69,6 @@ export default function ConnectionScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.sectionTitle}>Tipo de robot</Text>
       <RobotSelector value={robotType} onChange={setRobotType} />
-
-      <Text style={styles.sectionTitle}>Interfaz de red</Text>
-      <TextInput
-        style={styles.input}
-        value={networkInterface}
-        onChangeText={setNetworkInterface}
-        placeholder="eth0"
-        placeholderTextColor={colors.textMuted}
-        editable={!isConnected}
-      />
 
       <View style={styles.statusRow}>
         <StatusBadge status={connectionStatus} />
@@ -145,15 +132,6 @@ const styles = StyleSheet.create({
     fontSize: fonts.sizes.lg,
     fontWeight: '600',
     marginTop: spacing.sm,
-  },
-  input: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
-    padding: spacing.md,
-    color: colors.text,
-    fontSize: fonts.sizes.md,
   },
   statusRow: {
     flexDirection: 'row',

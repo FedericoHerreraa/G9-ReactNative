@@ -4,12 +4,8 @@ import { postAction } from './actions';
 
 const { connection, motion } = ENDPOINTS;
 
-export async function connectRobot({ robot_type, network_interface }) {
-  const body = { robot_type };
-  if (network_interface?.trim()) {
-    body.network_interface = network_interface.trim();
-  }
-  const { data } = await client.post(connection.connect, body);
+export async function connectRobot({ robot_type }) {
+  const { data } = await client.post(connection.connect, { robot_type });
   return data;
 }
 
