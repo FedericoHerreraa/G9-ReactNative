@@ -1,6 +1,6 @@
 const http = require('http');
 
-const BACKEND = { host: 'localhost', port: 8000 };
+const BACKEND = { host: '192.168.137.78', port: 8000 };
 const PROXY_PORT = 8010;
 
 http.createServer((req, res) => {
